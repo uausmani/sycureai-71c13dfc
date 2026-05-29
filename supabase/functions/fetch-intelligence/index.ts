@@ -10,7 +10,7 @@ const CATEGORY_QUERIES: Record<string, string> = {
   cybersecurity: '("CVE-2025" OR "CVE-2026" OR "zero-day" OR "ransomware")',
   btc: '("Bitcoin" OR "Ethereum") AND ("drainer" OR "hack" OR "exploit")',
   quantum: '("PQC" OR "Post-Quantum") AND ("security" OR "standard")',
-  funding: '("raises" OR "funding" OR "Series A" OR "Series B" OR "Series C" OR "seed round") AND ("AI" OR "cybersecurity" OR "crypto" OR "quantum" OR "startup")',
+  funding: '("Series A" OR "Series B" OR "Seed Round" OR "Venture Capital" OR "Acquisition" OR "Funding") AND ("Cybersecurity" OR "AI" OR "Quantum" OR "Blockchain" OR "Web3")',
 };
 
 // Categories that should also pull from Tree of Alpha
