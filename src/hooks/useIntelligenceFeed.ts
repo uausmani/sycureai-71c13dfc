@@ -9,6 +9,7 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
   cybersecurity: ['CVE-', 'Vulnerability', 'Exploit', 'Zero-Day', 'Patch', 'ransomware', 'Security Advisory'],
   btc: ['Bitcoin', 'Ethereum', 'crypto', 'hack', 'exploit', 'drainer', 'DeFi', 'blockchain'],
   quantum: ['quantum', 'PQC', 'post-quantum', 'cryptography', 'NIST', 'encryption', 'lattice'],
+  funding: ['funding', 'raises', 'raised', 'series a', 'series b', 'series c', 'seed round', 'venture', 'investment', 'valuation', 'startup'],
 };
 
 function passesHardFilter(article: NewsLink, category: string): boolean {

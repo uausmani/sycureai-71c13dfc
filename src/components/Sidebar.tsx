@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { Brain, Shield, Bitcoin, Atom, Link2, Linkedin } from "lucide-react";
+import { Brain, Shield, Bitcoin, Atom, Link2, Linkedin, DollarSign } from "lucide-react";
 
 interface NavItem {
   label: string;
@@ -12,6 +12,7 @@ const navItems: NavItem[] = [
   { label: "CYBERSECURITY", icon: <Shield className="w-5 h-5" />, id: "cybersecurity" },
   { label: "BITCOIN", icon: <Bitcoin className="w-5 h-5" />, id: "btc" },
   { label: "QUANTUM", icon: <Atom className="w-5 h-5" />, id: "quantum" },
+  { label: "FUNDING", icon: <DollarSign className="w-5 h-5" />, id: "funding" },
   { label: "CONNECT", icon: <Link2 className="w-5 h-5" />, id: "connect" },
 ];
 
