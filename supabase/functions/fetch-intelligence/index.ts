@@ -10,12 +10,13 @@ const CATEGORY_QUERIES: Record<string, string> = {
   cybersecurity: '("CVE-2025" OR "CVE-2026" OR "zero-day" OR "ransomware")',
   btc: '("Bitcoin" OR "Ethereum") AND ("drainer" OR "hack" OR "exploit")',
   quantum: '("PQC" OR "Post-Quantum") AND ("security" OR "standard")',
+  funding: '("raises" OR "funding" OR "Series A" OR "Series B" OR "Series C" OR "seed round") AND ("AI" OR "cybersecurity" OR "crypto" OR "quantum" OR "startup")',
 };
 
 // Categories that should also pull from Tree of Alpha
 const TREE_CATEGORIES = ['btc', 'quantum', 'ai'];
 
-const HIGH_PRIORITY_KEYWORDS = ['CVE-', 'Vulnerability', 'Exploit', 'Zero-Day', 'Patch', 'Security Advisory', 'LLM', 'GenAI', 'injection', 'jailbreak', 'quantum', 'PQC', 'ransomware', 'hack', 'drainer', 'crypto'];
+const HIGH_PRIORITY_KEYWORDS = ['CVE-', 'Vulnerability', 'Exploit', 'Zero-Day', 'Patch', 'Security Advisory', 'LLM', 'GenAI', 'injection', 'jailbreak', 'quantum', 'PQC', 'ransomware', 'hack', 'drainer', 'crypto', 'raises', 'funding', 'Series A', 'Series B', 'Series C', 'seed round', 'valuation', 'venture'];
 const TWO_DAYS_MS = 2 * 24 * 60 * 60 * 1000;
 
 function matchesKeywords(text: string): boolean {
