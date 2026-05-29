@@ -16,18 +16,24 @@ const CATEGORY_QUERIES: Record<string, string> = {
 // Categories that should also pull from Tree of Alpha
 const TREE_CATEGORIES = ['btc', 'quantum', 'ai'];
 
-const HIGH_PRIORITY_KEYWORDS = ['CVE-', 'Vulnerability', 'Exploit', 'Zero-Day', 'Patch', 'Security Advisory', 'LLM', 'GenAI', 'injection', 'jailbreak', 'quantum', 'PQC', 'ransomware', 'hack', 'drainer', 'crypto', 'raises', 'funding', 'Series A', 'Series B', 'Series C', 'seed round', 'valuation', 'venture'];
+const HIGH_PRIORITY_KEYWORDS = ['CVE-', 'Vulnerability', 'Exploit', 'Zero-Day', 'Patch', 'Security Advisory', 'LLM', 'GenAI', 'injection', 'jailbreak', 'quantum', 'PQC', 'ransomware', 'hack', 'drainer', 'crypto'];
+const FUNDING_KEYWORDS = ['$', 'million', 'billion', 'funding'];
 const TWO_DAYS_MS = 2 * 24 * 60 * 60 * 1000;
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
-function matchesKeywords(text: string): boolean {
+function matchesKeywords(text: string, category: string): boolean {
   const lower = text.toLowerCase();
+  if (category === 'funding') {
+    return FUNDING_KEYWORDS.some(kw => lower.includes(kw.toLowerCase()));
+  }
   return HIGH_PRIORITY_KEYWORDS.some(kw => lower.includes(kw.toLowerCase()));
 }
 
-function isRecent(dateStr: string | number | undefined): boolean {
+function isRecent(dateStr: string | number | undefined, category: string): boolean {
   if (!dateStr) return false;
   const ts = typeof dateStr === 'number' ? dateStr : new Date(dateStr).getTime();
-  return Date.now() - ts < TWO_DAYS_MS;
+  const window = category === 'funding' ? SEVEN_DAYS_MS : TWO_DAYS_MS;
+  return Date.now() - ts < window;
 }
 
 function isValidTitle(title: string | undefined): boolean {
