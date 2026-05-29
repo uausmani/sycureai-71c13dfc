@@ -9,13 +9,18 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
   cybersecurity: ['CVE-', 'Vulnerability', 'Exploit', 'Zero-Day', 'Patch', 'ransomware', 'Security Advisory'],
   btc: ['Bitcoin', 'Ethereum', 'crypto', 'hack', 'exploit', 'drainer', 'DeFi', 'blockchain'],
   quantum: ['quantum', 'PQC', 'post-quantum', 'cryptography', 'NIST', 'encryption', 'lattice'],
-  funding: ['funding', 'raises', 'raised', 'series a', 'series b', 'series c', 'seed round', 'venture', 'investment', 'valuation', 'startup'],
+  funding: ['$', 'million', 'billion', 'funding'],
 };
 
 function passesHardFilter(article: NewsLink, category: string): boolean {
-  const text = `${article.title || ''} ${article.sourceName || ''}`.toLowerCase();
   const keywords = CATEGORY_KEYWORDS[category] || [];
-  return keywords.some(kw => text.toLowerCase().includes(kw.toLowerCase()));
+  // Funding: require keyword in headline only (dollar amount or "funding")
+  if (category === 'funding') {
+    const title = (article.title || '').toLowerCase();
+    return keywords.some(kw => title.includes(kw.toLowerCase()));
+  }
+  const text = `${article.title || ''} ${article.sourceName || ''}`.toLowerCase();
+  return keywords.some(kw => text.includes(kw.toLowerCase()));
 }
 
 
