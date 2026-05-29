@@ -122,7 +122,7 @@ async function fetchTreeOfAlpha(category: string): Promise<UnifiedArticle[]> {
       .filter((item: any) => {
         const text = `${item.title || ''} ${item.body || ''}`.toLowerCase();
         const hasKeyword = keywords.some(kw => text.includes(kw));
-        const recentEnough = item.time ? isRecent(item.time) : false;
+        const recentEnough = item.time ? isRecent(item.time, category) : false;
         return hasKeyword && recentEnough && isValidTitle(item.title || item.body?.substring(0, 80));
       })
       .slice(0, 5)
