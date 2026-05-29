@@ -10,24 +10,30 @@ const CATEGORY_QUERIES: Record<string, string> = {
   cybersecurity: '("CVE-2025" OR "CVE-2026" OR "zero-day" OR "ransomware")',
   btc: '("Bitcoin" OR "Ethereum") AND ("drainer" OR "hack" OR "exploit")',
   quantum: '("PQC" OR "Post-Quantum") AND ("security" OR "standard")',
-  funding: '("raises" OR "funding" OR "Series A" OR "Series B" OR "Series C" OR "seed round") AND ("AI" OR "cybersecurity" OR "crypto" OR "quantum" OR "startup")',
+  funding: '("Series A" OR "Series B" OR "Seed Round" OR "Venture Capital" OR "Acquisition" OR "Funding") AND ("Cybersecurity" OR "AI" OR "Quantum" OR "Blockchain" OR "Web3")',
 };
 
 // Categories that should also pull from Tree of Alpha
 const TREE_CATEGORIES = ['btc', 'quantum', 'ai'];
 
-const HIGH_PRIORITY_KEYWORDS = ['CVE-', 'Vulnerability', 'Exploit', 'Zero-Day', 'Patch', 'Security Advisory', 'LLM', 'GenAI', 'injection', 'jailbreak', 'quantum', 'PQC', 'ransomware', 'hack', 'drainer', 'crypto', 'raises', 'funding', 'Series A', 'Series B', 'Series C', 'seed round', 'valuation', 'venture'];
+const HIGH_PRIORITY_KEYWORDS = ['CVE-', 'Vulnerability', 'Exploit', 'Zero-Day', 'Patch', 'Security Advisory', 'LLM', 'GenAI', 'injection', 'jailbreak', 'quantum', 'PQC', 'ransomware', 'hack', 'drainer', 'crypto'];
+const FUNDING_KEYWORDS = ['$', 'million', 'billion', 'funding'];
 const TWO_DAYS_MS = 2 * 24 * 60 * 60 * 1000;
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
-function matchesKeywords(text: string): boolean {
+function matchesKeywords(text: string, category: string): boolean {
   const lower = text.toLowerCase();
+  if (category === 'funding') {
+    return FUNDING_KEYWORDS.some(kw => lower.includes(kw.toLowerCase()));
+  }
   return HIGH_PRIORITY_KEYWORDS.some(kw => lower.includes(kw.toLowerCase()));
 }
 
-function isRecent(dateStr: string | number | undefined): boolean {
+function isRecent(dateStr: string | number | undefined, category: string): boolean {
   if (!dateStr) return false;
   const ts = typeof dateStr === 'number' ? dateStr : new Date(dateStr).getTime();
-  return Date.now() - ts < TWO_DAYS_MS;
+  const window = category === 'funding' ? SEVEN_DAYS_MS : TWO_DAYS_MS;
+  return Date.now() - ts < window;
 }
 
 function isValidTitle(title: string | undefined): boolean {
@@ -46,7 +52,7 @@ interface UnifiedArticle {
   via: 'NewsAPI' | 'Tree News';
 }
 
-async function fetchNewsAPI(query: string, apiKey: string): Promise<UnifiedArticle[]> {
+async function fetchNewsAPI(query: string, apiKey: string, category: string): Promise<UnifiedArticle[]> {
   try {
     const params = new URLSearchParams({
       q: query,
@@ -65,11 +71,14 @@ async function fetchNewsAPI(query: string, apiKey: string): Promise<UnifiedArtic
     }
 
     return (data.articles || [])
-      .filter((a: any) =>
-        isValidTitle(a.title) &&
-        isRecent(a.publishedAt) &&
-        matchesKeywords(`${a.title || ''} ${a.description || ''}`)
-      )
+      .filter((a: any) => {
+        if (!isValidTitle(a.title) || !isRecent(a.publishedAt, category)) return false;
+        if (category === 'funding') {
+          // Hard filter: must mention $/million/billion/funding in HEADLINE
+          return matchesKeywords(a.title || '', 'funding');
+        }
+        return matchesKeywords(`${a.title || ''} ${a.description || ''}`, category);
+      })
       .slice(0, 5)
       .map((a: any) => ({
         title: a.title,
@@ -113,7 +122,7 @@ async function fetchTreeOfAlpha(category: string): Promise<UnifiedArticle[]> {
       .filter((item: any) => {
         const text = `${item.title || ''} ${item.body || ''}`.toLowerCase();
         const hasKeyword = keywords.some(kw => text.includes(kw));
-        const recentEnough = item.time ? isRecent(item.time) : false;
+        const recentEnough = item.time ? isRecent(item.time, category) : false;
         return hasKeyword && recentEnough && isValidTitle(item.title || item.body?.substring(0, 80));
       })
       .slice(0, 5)
@@ -168,7 +177,7 @@ serve(async (req) => {
     }
 
     // Build fetch promises based on category
-    const fetchers: Promise<UnifiedArticle[]>[] = [fetchNewsAPI(query, apiKey)];
+    const fetchers: Promise<UnifiedArticle[]>[] = [fetchNewsAPI(query, apiKey, category)];
 
     if (TREE_CATEGORIES.includes(category)) {
       fetchers.push(fetchTreeOfAlpha(category));
