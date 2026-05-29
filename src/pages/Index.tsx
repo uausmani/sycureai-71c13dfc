@@ -10,6 +10,7 @@ const topicMeta = [
   { title: "CYBERSECURITY", subtitle: "CVEs, Exploits & Zero-Days", section: "cybersecurity" },
   { title: "BITCOIN", subtitle: "Crypto Hacks & Blockchain Vulnerabilities", section: "btc" },
   { title: "QUANTUM COMPUTING", subtitle: "Post-Quantum Cryptography & NIST PQC", section: "quantum" },
+  { title: "FUNDING", subtitle: "Startup Rounds in AI, Security, Crypto & Quantum", section: "funding" },
 ];
 
 function IntelligenceAccordion({ title, subtitle, section, index }: { title: string; subtitle: string; section: string; index: number }) {
