@@ -177,7 +177,7 @@ serve(async (req) => {
     }
 
     // Build fetch promises based on category
-    const fetchers: Promise<UnifiedArticle[]>[] = [fetchNewsAPI(query, apiKey)];
+    const fetchers: Promise<UnifiedArticle[]>[] = [fetchNewsAPI(query, apiKey, category)];
 
     if (TREE_CATEGORIES.includes(category)) {
       fetchers.push(fetchTreeOfAlpha(category));
