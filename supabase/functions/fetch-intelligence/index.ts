@@ -52,7 +52,7 @@ interface UnifiedArticle {
   via: 'NewsAPI' | 'Tree News';
 }
 
-async function fetchNewsAPI(query: string, apiKey: string): Promise<UnifiedArticle[]> {
+async function fetchNewsAPI(query: string, apiKey: string, category: string): Promise<UnifiedArticle[]> {
   try {
     const params = new URLSearchParams({
       q: query,
@@ -71,11 +71,14 @@ async function fetchNewsAPI(query: string, apiKey: string): Promise<UnifiedArtic
     }
 
     return (data.articles || [])
-      .filter((a: any) =>
-        isValidTitle(a.title) &&
-        isRecent(a.publishedAt) &&
-        matchesKeywords(`${a.title || ''} ${a.description || ''}`)
-      )
+      .filter((a: any) => {
+        if (!isValidTitle(a.title) || !isRecent(a.publishedAt, category)) return false;
+        if (category === 'funding') {
+          // Hard filter: must mention $/million/billion/funding in HEADLINE
+          return matchesKeywords(a.title || '', 'funding');
+        }
+        return matchesKeywords(`${a.title || ''} ${a.description || ''}`, category);
+      })
       .slice(0, 5)
       .map((a: any) => ({
         title: a.title,
