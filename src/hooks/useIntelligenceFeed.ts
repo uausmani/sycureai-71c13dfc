@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { NewsLink } from "@/data/newsData";
 
@@ -14,7 +14,6 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
 
 function passesHardFilter(article: NewsLink, category: string): boolean {
   const keywords = CATEGORY_KEYWORDS[category] || [];
-  // Funding: require keyword in headline only (dollar amount or "funding")
   if (category === 'funding') {
     const title = (article.title || '').toLowerCase();
     return keywords.some(kw => title.includes(kw.toLowerCase()));
@@ -23,18 +22,32 @@ function passesHardFilter(article: NewsLink, category: string): boolean {
   return keywords.some(kw => text.includes(kw.toLowerCase()));
 }
 
-
 interface CachedData {
   articles: NewsLink[];
   fetchedAt: string;
 }
 
-export function useIntelligenceFeed(category: string) {
+interface UseIntelligenceFeedOptions {
+  /** Index used to stagger background refresh start times (2s per index). */
+  staggerIndex?: number;
+  /** Callback fired whenever fresh data is fetched (not from cache). */
+  onSynced?: (fetchedAt: string) => void;
+}
+
+const REFRESH_INTERVAL = 30 * 60 * 1000; // 30 minutes
+const STAGGER_MS = 2000;
+
+export function useIntelligenceFeed(category: string, options: UseIntelligenceFeedOptions = {}) {
+  const { staggerIndex = 0, onSynced } = options;
   const [links, setLinks] = useState<NewsLink[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [isLive, setIsLive] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const onSyncedRef = useRef(onSynced);
+  onSyncedRef.current = onSynced;
 
-  const fetchData = useCallback(async (skipCache = false) => {
+  const fetchData = useCallback(async (skipCache = false, background = false) => {
     const cacheKey = CACHE_KEY_PREFIX + category;
 
     if (!skipCache) {
@@ -45,6 +58,7 @@ export function useIntelligenceFeed(category: string) {
           if (Date.now() - new Date(parsed.fetchedAt).getTime() < CACHE_DURATION) {
             setLinks(parsed.articles);
             setIsLive(true);
+            setLastUpdated(parsed.fetchedAt);
             setLoading(false);
             return;
           }
@@ -52,7 +66,11 @@ export function useIntelligenceFeed(category: string) {
       } catch {}
     }
 
-    setLoading(true);
+    if (background) {
+      setSyncing(true);
+    } else {
+      setLoading(true);
+    }
     try {
       const { data, error } = await supabase.functions.invoke("fetch-intelligence", {
         body: { category },
@@ -69,26 +87,54 @@ export function useIntelligenceFeed(category: string) {
           timestamp: a.timestamp,
           via: a.via || 'NewsAPI',
         }));
+        const fetchedAt = data.fetchedAt || new Date().toISOString();
         setLinks(withVia);
         setIsLive(withVia.length > 0);
+        setLastUpdated(fetchedAt);
         localStorage.setItem(cacheKey, JSON.stringify({
           articles: withVia,
-          fetchedAt: data.fetchedAt,
+          fetchedAt,
         }));
+        onSyncedRef.current?.(fetchedAt);
       }
     } catch (err) {
       console.error(`Failed to fetch intelligence for ${category}:`, err);
       setIsLive(false);
     } finally {
       setLoading(false);
+      setSyncing(false);
     }
   }, [category]);
 
+  // Initial load
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  const refresh = useCallback(() => fetchData(true), [fetchData]);
+  // Background auto-refresh every 30 minutes, staggered, only when tab is visible
+  useEffect(() => {
+    let intervalId: number | undefined;
+    const startDelay = staggerIndex * STAGGER_MS;
 
-  return { links, loading, isLive, refresh };
+    const tick = () => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+        return; // Skip refresh when tab is hidden to save API credits
+      }
+      fetchData(true, true);
+    };
+
+    const startTimeoutId = window.setTimeout(() => {
+      tick();
+      intervalId = window.setInterval(tick, REFRESH_INTERVAL);
+    }, REFRESH_INTERVAL + startDelay);
+
+    return () => {
+      window.clearTimeout(startTimeoutId);
+      if (intervalId) window.clearInterval(intervalId);
+    };
+  }, [fetchData, staggerIndex]);
+
+  const refresh = useCallback(() => fetchData(true, true), [fetchData]);
+
+  return { links, loading, syncing, isLive, lastUpdated, refresh };
 }
