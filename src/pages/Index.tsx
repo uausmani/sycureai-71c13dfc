@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Logo } from "@/components/Logo";
 import { Sidebar } from "@/components/Sidebar";
 import { TopicAccordion } from "@/components/TopicAccordion";
@@ -13,15 +13,23 @@ const topicMeta = [
   { title: "FUNDING", subtitle: "Startup Rounds in AI, Security, Crypto & Quantum", section: "funding" },
 ];
 
-function IntelligenceAccordion({ title, subtitle, section, index }: { title: string; subtitle: string; section: string; index: number }) {
-  const { links, loading, isLive, refresh } = useIntelligenceFeed(section);
-  const [refreshing, setRefreshing] = useState(false);
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await refresh();
-    setRefreshing(false);
-  };
+function IntelligenceAccordion({
+  title,
+  subtitle,
+  section,
+  index,
+  onSynced,
+}: {
+  title: string;
+  subtitle: string;
+  section: string;
+  index: number;
+  onSynced: (fetchedAt: string) => void;
+}) {
+  const { links, loading, syncing, isLive, lastUpdated } = useIntelligenceFeed(section, {
+    staggerIndex: index,
+    onSynced,
+  });
 
   return (
     <TopicAccordion
@@ -29,17 +37,25 @@ function IntelligenceAccordion({ title, subtitle, section, index }: { title: str
       subtitle={subtitle}
       links={links}
       index={index}
-      lastUpdated={links.length > 0 ? new Date().toISOString() : undefined}
-      onRefresh={handleRefresh}
-      isRefreshing={refreshing}
+      lastUpdated={lastUpdated ?? undefined}
       isLive={isLive}
       isLoading={loading}
+      isSyncing={syncing}
     />
   );
 }
 
+function formatTime(iso: string): string {
+  try {
+    return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return '';
+  }
+}
+
 const Index = () => {
   const [activeSection, setActiveSection] = useState<string>("all");
+  const [hubLastUpdated, setHubLastUpdated] = useState<string | null>(null);
 
   const showContactForm = activeSection === "connect";
 
@@ -53,6 +69,13 @@ const Index = () => {
   const handleLogoClick = () => {
     setActiveSection("all");
   };
+
+  const handleSynced = useCallback((fetchedAt: string) => {
+    setHubLastUpdated((prev) => {
+      if (!prev) return fetchedAt;
+      return new Date(fetchedAt) > new Date(prev) ? fetchedAt : prev;
+    });
+  }, []);
 
   return (
     <main className="min-h-screen bg-background">
@@ -73,15 +96,23 @@ const Index = () => {
             {showContactForm ? (
               <ContactForm />
             ) : (
-              displayTopics.map((topic, index) => (
-                <IntelligenceAccordion
-                  key={topic.section}
-                  title={topic.title}
-                  subtitle={topic.subtitle}
-                  section={topic.section}
-                  index={index}
-                />
-              ))
+              <>
+                {displayTopics.map((topic, index) => (
+                  <IntelligenceAccordion
+                    key={topic.section}
+                    title={topic.title}
+                    subtitle={topic.subtitle}
+                    section={topic.section}
+                    index={index}
+                    onSynced={handleSynced}
+                  />
+                ))}
+                {hubLastUpdated && (
+                  <p className="pt-2 text-xs text-muted-foreground font-light tracking-wide text-right">
+                    Last updated: {formatTime(hubLastUpdated)}
+                  </p>
+                )}
+              </>
             )}
           </section>
         </div>
