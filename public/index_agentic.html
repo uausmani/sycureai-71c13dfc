@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sycure SOC COMMAND | GLOBAL ENTERPRISE 2026</title>
+<link rel="icon" href="hires2-removebg-preview.png" type="image/png">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+/* Layout */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+:root{--bg:#f1f5f9;--card:#fff;--text:#1e293b;--critical:#ef4444;--warning:#f59e0b;--success:#10b981;--info:#3b82f6;--paused:#06b6d4}
+*{box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);margin:0;overflow-x:hidden}
+/* Cards */
+.glass-card{background:#fff;border:1px solid #e2e8f0;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.sidebar-glass{background:#f8fafc;border:1px solid #e2e8f0}
+.chart-box{position:relative;width:100%;height:220px}
+.chart-box-sm{height:160px}
+.status-running{background:#dcfce7;color:#166534}
+.status-idle{background:#fef3c7;color:#92400e}
+.status-paused{background:#cffafe;color:#0e7490}
+.status-blocked{background:#fee2e2;color:#b91c1c}
+.sev-critical{background:#fee2e2;color:#b91c1c;border:1px solid #fecaca}
+.sev-high{background:#ffedd5;color:#9a3412;border:1px solid #fed7aa}
+.sev-medium{background:#fef3c7;color:#92400e;border:1px solid #fde68a}
+.sev-low{background:#f0fdf4;color:#166534;border:1px solid #bbf7d0}
+.health-healthy{background:#dcfce7;color:#166534}
+.health-degraded{background:#fef3c7;color:#92400e}
+.health-failed{background:#fee2e2;color:#b91c1c}
+/* Threat Panel */
+.slide-panel{position:fixed;top:0;right:0;width:100%;max-width:520px;height:100vh;background:#fff;border-left:1px solid #e2e8f0;box-shadow:-4px 0 20px rgba(0,0,0,.08);transform:translateX(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);z-index:60;overflow-y:auto}
+.slide-panel.open{transform:translateX(0)}
+.panel-overlay{position:fixed;inset:0;background:rgba(15,23,42,.35);opacity:0;pointer-events:none;transition:opacity .3s;z-index:55}
+.panel-overlay.open{opacity:1;pointer-events:auto}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;font-size:13px;font-weight:500;color:#475569;cursor:pointer;transition:all .15s}
+.nav-item:hover{background:rgba(255,255,255,.7)}
+.nav-item.active{background:#fff;color:#1e293b;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.nav-section{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;padding:12px 12px 4px}
+/* Heatmap */
+.heatmap-grid{display:grid;grid-template-columns:32px repeat(52,1fr);gap:2px}
+.heatmap-cell{width:100%;aspect-ratio:1;border-radius:2px;cursor:pointer;transition:transform .1s,box-shadow .1s}
+.heatmap-cell:hover{transform:scale(1.3);box-shadow:0 0 0 2px #1e293b;z-index:2;position:relative}
+.heatmap-tooltip{position:fixed;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:10px 14px;box-shadow:0 8px 24px rgba(0,0,0,.12);pointer-events:none;z-index:100;font-size:12px;display:none;max-width:220px}
+.attack-path{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;align-items:center;gap:0;padding:24px 16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px}
+.path-node{text-align:center;padding:8px}
+.path-node-icon{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 6px;font-size:10px;font-weight:700;color:#fff}
+.path-node-ext{background:#64748b;border:2px solid #94a3b8}
+.path-node-dmz{background:#3b82f6;border:2px solid #60a5fa}
+.path-node-target{background:#b91c1c;border:2px solid #ef4444;box-shadow:0 0 16px rgba(239,68,68,.4)}
+.path-connector{height:3px;position:relative;min-width:40px}
+.path-connector-blue{background:linear-gradient(90deg,#3b82f6,#60a5fa)}
+.path-connector-red{background:linear-gradient(90deg,#f59e0b,#ef4444)}
+.path-connector::after{content:'';position:absolute;right:-1px;top:50%;transform:translateY(-50%);width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent}
+.path-connector-blue::after{border-left:8px solid #60a5fa}
+.path-connector-red::after{border-left:8px solid #ef4444}
+.path-step-label{position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:11px;font-weight:600;color:#64748b;white-space:nowrap}
+.audit-ticker{max-height:240px;overflow-y:auto}
+.audit-item{padding:10px 0;border-bottom:1px solid #f1f5f9;font-size:12px}
+.audit-item:last-child{border-bottom:none}
+.view-section{display:none}
+.view-section.active{display:block}
+.readonly-badge{font-size:12px;background:#f1f5f9;color:#64748b;padding:2px 8px;border-radius:4px;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.pulse-dot{width:8px;height:8px;border-radius:50%;background:var(--success);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(16,185,129,.5)}50%{opacity:.8;box-shadow:0 0 0 6px rgba(16,185,129,0)}}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:#f1f5f9}
+::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:10px}
+table.data-table{width:100%;border-collapse:collapse;font-size:13px}
+table.data-table th{text-align:left;padding:10px 12px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#64748b;border-bottom:1px solid #e2e8f0;background:#f8fafc}
+table.data-table td{padding:10px 12px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+table.data-table tr:hover td{background:#f8fafc}
+.btn-view{background:none;border:1px solid #e2e8f0;border-radius:6px;padding:4px 10px;font-size:12px;font-weight:500;color:#3b82f6;cursor:pointer;transition:all .15s}
+.mobile-nav-tabs{display:flex;gap:4px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+.mobile-nav-tab{flex-shrink:0;padding:6px 12px;font-size:12px;font-weight:500;border-radius:8px;border:1px solid #e2e8f0;background:#fff;color:#475569;cursor:pointer;white-space:nowrap}
+.mobile-nav-tab.active{background:#1e293b;color:#fff;border-color:#1e293b}
+.btn-view:hover{background:#eff6ff;border-color:#93c5fd}
+.legend-bar{height:8px;border-radius:4px;background:linear-gradient(90deg,#fef3c7,#fbbf24,#f97316,#ef4444,#991b1b)}
+.brand-logo{width:38px;height:38px;object-fit:contain;flex-shrink:0;display:block}
+.brand-mark{display:flex;align-items:center;gap:12px;min-width:0}
+</style>
+</head>
+<body>
+
+<header class="sticky top-0 z-40 glass-card border-b">
+<div class="max-w-[1600px] mx-auto px-4 h-14 flex items-center justify-between gap-4">
+<div class="brand-mark">
+<img src="hires2-removebg-preview.png" alt="Sycure" class="brand-logo" width="38" height="38">
+<div class="min-w-0">
+<h1 class="font-bold text-sm leading-tight">Sycure SOC COMMAND</h1>
+<p class="text-xs text-slate-500">Agentic Security Operations Center</p>
+</div>
+</div>
+<div class="flex bg-slate-100 p-1 rounded-lg gap-1" id="roleSwitcher" role="group" aria-label="Dashboard role">
+<button type="button" data-role="CISO" aria-pressed="true" class="role-btn px-4 py-1.5 text-xs font-semibold rounded-md bg-white shadow-sm text-slate-900">CISO</button>
+<button type="button" data-role="Manager" aria-pressed="false" class="role-btn px-4 py-1.5 text-xs font-medium rounded-md text-slate-600 hover:bg-slate-200">SOC Manager</button>
+<button type="button" data-role="Analyst" aria-pressed="false" class="role-btn px-4 py-1.5 text-xs font-medium rounded-md text-slate-600 hover:bg-slate-200">Analyst</button>
+</div>
+<div class="flex items-center gap-4 text-xs font-medium text-slate-600">
+<div class="flex items-center gap-2"><span class="pulse-dot"></span><span id="connState">LIVE CONNECTED</span></div>
+<div id="utcClock" class="font-mono bg-slate-800 text-white px-3 py-1 rounded text-xs">00:00:00 UTC</div>
+</div>
+</div>
+</header>
+
+<div id="panelOverlay" class="panel-overlay" onclick="closeThreatDetail()"></div>
+
+<div id="threatDetailPanel" class="slide-panel" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
+<div class="p-6">
+<div class="flex justify-between items-start mb-5">
+<div>
+<span id="detailSeverity" class="px-2 py-0.5 rounded text-xs font-bold uppercase tracking-widest sev-critical">CRITICAL</span>
+<h2 id="detailTitle" class="text-lg font-bold text-slate-800 mt-2" tabindex="-1">Threat Name</h2>
+<p id="detailId" class="text-xs text-slate-400 font-mono mt-1">INC-2026-0000</p>
+</div>
+<button type="button" onclick="closeThreatDetail()" aria-label="Close threat detail" class="text-slate-400 hover:text-slate-800 text-2xl leading-none">&times;</button>
+</div>
+<div id="detailImpactBanner" class="bg-red-50 p-4 rounded-lg border border-red-100 mb-6">
+<p class="text-xs font-bold text-red-800 uppercase tracking-wide">Business Impact Summary</p>
+<p id="detailImpact" class="text-sm text-red-700 mt-1 font-medium"></p>
+</div>
+<div class="mb-6">
+<h4 class="text-xs font-bold text-slate-500 uppercase mb-3 tracking-wider">Logical Attack Path</h4>
+<div class="attack-path">
+<div class="path-node">
+<div class="path-node-icon path-node-ext">EXT</div>
+<p class="text-xs font-bold text-slate-700" id="pathSourceIp">0.0.0.0</p>
+<p class="text-xs text-slate-500" id="pathSourceGeo">Unknown</p>
+</div>
+<div class="path-connector path-connector-blue"><span class="path-step-label">Ingress</span></div>
+<div class="path-node">
+<div class="path-node-icon path-node-dmz">DMZ</div>
+<p class="text-xs font-bold text-slate-700">DMZ Proxy Gateway</p>
+<p class="text-xs text-slate-500">Bastion_01</p>
+</div>
+<div class="path-connector path-connector-red"><span class="path-step-label">Lateral</span></div>
+<div class="path-node">
+<div class="path-node-icon path-node-target">CJ</div>
+<p class="text-xs font-bold text-red-700" id="pathTargetHost">HOST-01</p>
+<p class="text-xs text-red-500">Crown Jewel Enclave</p>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-1 gap-4 mb-6">
+<div>
+<h4 class="text-xs font-bold text-slate-400 uppercase mb-2">Identity Context</h4>
+<div class="p-3 bg-slate-50 rounded-lg border text-sm">
+<p id="detailUser" class="font-semibold text-slate-800"></p>
+<p id="detailPrivilege" class="text-sm text-slate-500 mt-1"></p>
+<p id="detailAuthAnomaly" class="text-sm text-amber-600 font-medium mt-1"></p>
+</div>
+</div>
+<div>
+<h4 class="text-xs font-bold text-slate-400 uppercase mb-2">Device / Asset Health</h4>
+<div class="p-3 bg-slate-50 rounded-lg border text-sm">
+<p id="detailHostname" class="font-semibold text-slate-800"></p>
+<p id="detailDeviceType" class="text-sm text-slate-500 mt-1"></p>
+<p id="detailCVE" class="text-sm text-red-600 font-bold mt-1"></p>
+</div>
+</div>
+<div>
+<h4 class="text-xs font-bold text-slate-400 uppercase mb-2">Technical Payload</h4>
+<div class="p-3 bg-slate-900 rounded-lg border border-slate-700 font-mono text-sm text-emerald-400">
+<p id="detailProtocol" class="text-slate-400"></p>
+<p id="detailPayload" class="mt-1 break-all"></p>
+<p id="detailAnomaly" class="mt-2 text-amber-400"></p>
+<p id="detailAlert" class="mt-1 text-red-400"></p>
+</div>
+</div>
+</div>
+<div class="border-t pt-5">
+<h4 class="text-xs font-bold text-slate-400 uppercase mb-3 tracking-widest">Business Translation View</h4>
+<div class="grid grid-cols-3 gap-2">
+<div class="p-3 bg-red-50 rounded-lg border border-red-100 text-center">
+<p class="text-xs text-red-600 font-bold">Loss Exposure / hr</p>
+<p id="detailLossExposure" class="text-sm font-bold text-red-900 mt-1">$0</p>
+</div>
+<div class="p-3 bg-slate-50 rounded-lg border text-center">
+<p class="text-xs text-slate-500 font-bold">SOAR Playbook</p>
+<p id="detailSOAR" class="text-sm font-bold text-slate-700 mt-1">—</p>
+</div>
+<div class="p-3 bg-emerald-50 rounded-lg border border-emerald-100 text-center">
+<p class="text-xs text-emerald-600 font-bold">Isolation State</p>
+<p id="detailIsolation" class="text-sm font-bold text-emerald-900 mt-1">—</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<div id="heatmapTooltip" class="heatmap-tooltip"></div>
+
+<main class="max-w-[1600px] mx-auto p-4 lg:p-6">
+
+<!-- CISO VIEW -->
+<section id="viewCISO" class="view-section active space-y-6">
+<div class="flex items-center justify-between">
+<h2 class="text-lg font-bold text-slate-800">Strategic Command Overview</h2>
+<span class="readonly-badge">Read-Only Executive View</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+<div class="glass-card p-5 rounded-xl border-l-4 border-indigo-500">
+<p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Enterprise Risk Index</p>
+<p class="text-3xl font-bold text-slate-800 mt-2"><span id="cisoRiskIndex">—</span><span class="text-base text-slate-400">/100</span></p>
+<p id="cisoRiskTrend" class="text-xs text-emerald-600 font-semibold mt-1">Derived from severity distribution</p>
+</div>
+<div class="glass-card p-5 rounded-xl border-l-4 border-red-500">
+<p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Active Critical Threats</p>
+<p id="cisoCriticalCount" class="text-3xl font-bold text-red-600 mt-2">0</p>
+<p class="text-xs text-slate-400 mt-1">SLA breach window: 15m</p>
+</div>
+<div class="glass-card p-5 rounded-xl border-l-4 border-amber-500">
+<p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Prevented Loss (YTD)</p>
+<p id="cisoPreventedLoss" class="text-2xl font-bold text-slate-800 mt-2">—</p>
+<p class="text-xs text-slate-400 mt-1">vs ALE baseline $3.4M</p>
+</div>
+<div class="glass-card p-5 rounded-xl border-l-4 border-blue-500">
+<p class="text-xs font-bold text-slate-500 uppercase tracking-wider">ROSI Performance</p>
+<p class="text-3xl font-bold text-slate-800 mt-2">142<span class="text-base text-slate-400">%</span></p>
+<p class="text-xs text-slate-400 mt-1">Return on Security Investment (static demo)</p>
+</div>
+<div class="glass-card p-5 rounded-xl border-l-4 border-emerald-500">
+<p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Framework Compliance</p>
+<p class="text-3xl font-bold text-slate-800 mt-2"><span id="cisoCompliance">—</span><span class="text-base text-slate-400">%</span></p>
+<p id="cisoComplianceDetail" class="text-xs text-slate-400 mt-1">GDPR / PCI-DSS continuous</p>
+</div>
+</div>
+<div class="grid grid-cols-12 gap-6">
+<div class="col-span-12 lg:col-span-7 glass-card rounded-xl p-5">
+<h3 class="font-bold text-sm text-slate-700 mb-4 flex items-center gap-2"><span class="text-lg">⊕</span> Global Threat Vector Map</h3>
+<div class="relative bg-slate-50 rounded-lg border aspect-[16/9] overflow-hidden">
+<canvas id="globalMapCanvas" class="w-full h-full"></canvas>
+<div class="absolute bottom-3 left-3 text-xs space-y-1 bg-white/80 rounded px-2 py-1">
+<div class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-500"></span> Inbound Campaign</div>
+<div class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-indigo-500"></span> Targeted Enclave</div>
+</div>
+</div>
+</div>
+<div class="col-span-12 lg:col-span-5 glass-card rounded-xl p-5">
+<h3 class="font-bold text-sm text-slate-700 mb-4">UrgencyScore Risk Heatmap</h3>
+<div id="cisoHeatmap" class="overflow-x-auto"></div>
+<div class="mt-3 flex items-center gap-2 text-xs text-slate-500">
+<span>Low</span><div class="flex-1 legend-bar"></div><span>Critical</span>
+</div>
+</div>
+</div>
+</section>
+
+<!-- SOC MANAGER VIEW -->
+<section id="viewManager" class="view-section space-y-6">
+<div class="flex items-center justify-between">
+<h2 class="text-lg font-bold text-slate-800">Tactical Performance Layer</h2>
+<span class="readonly-badge">Read-Only Compliance Mode</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+<div class="glass-card p-4 rounded-xl text-center">
+<p class="text-xs font-bold text-slate-500 uppercase">MTTD</p>
+<p id="managerMTTD" class="text-2xl font-bold text-indigo-600 mt-1">—</p>
+<div class="w-full bg-slate-100 rounded-full h-1.5 mt-2"><div id="managerMTTDBar" class="bg-indigo-500 h-1.5 rounded-full" style="width:35%"></div></div>
+</div>
+<div class="glass-card p-4 rounded-xl text-center">
+<p class="text-xs font-bold text-slate-500 uppercase">MTTR</p>
+<p id="managerMTTR" class="text-2xl font-bold text-amber-600 mt-1">—</p>
+<div class="w-full bg-slate-100 rounded-full h-1.5 mt-2"><div id="managerMTTRBar" class="bg-amber-500 h-1.5 rounded-full" style="width:65%"></div></div>
+</div>
+<div class="glass-card p-4 rounded-xl text-center">
+<p class="text-xs font-bold text-slate-500 uppercase">Pipeline Velocity</p>
+<p id="managerPipeline" class="text-2xl font-bold text-slate-800 mt-1">—<span class="text-sm text-slate-400">/day</span></p>
+</div>
+<div class="glass-card p-4 rounded-xl text-center">
+<p class="text-xs font-bold text-slate-500 uppercase">SLA Compliance</p>
+<p id="managerSLA" class="text-2xl font-bold text-emerald-600 mt-1">—</p>
+</div>
+</div>
+<div class="grid grid-cols-12 gap-6">
+<div class="col-span-12 lg:col-span-5 glass-card rounded-xl p-5">
+<h3 class="font-bold text-sm text-slate-700 mb-3">Control Efficacy</h3>
+<div class="chart-box"><canvas id="controlEfficacyChart"></canvas></div>
+</div>
+<div class="col-span-12 lg:col-span-3 glass-card rounded-xl p-5">
+<h3 class="font-bold text-sm text-slate-700 mb-3">SOAR Automation Health</h3>
+<div class="chart-box chart-box-sm flex items-center justify-center"><canvas id="soarHealthChart"></canvas></div>
+<p class="text-center text-xs text-slate-500 mt-2">72% automated playbooks</p>
+</div>
+<div class="col-span-12 lg:col-span-4 glass-card rounded-xl p-5">
+<h3 class="font-bold text-sm text-slate-700 mb-3">Audit Log</h3>
+<div id="auditLog" class="audit-ticker"></div>
+</div>
+</div>
+<div class="grid grid-cols-12 gap-6">
+<div class="col-span-12 lg:col-span-7 glass-card rounded-xl p-5">
+<h3 class="font-bold text-sm text-slate-700 mb-3">Performance Metrics</h3>
+<div class="chart-box" style="height:260px"><canvas id="perfMetricsChart"></canvas></div>
+</div>
+<div class="col-span-12 lg:col-span-5 glass-card rounded-xl p-5">
+<h3 class="font-bold text-sm text-slate-700 mb-3">Urgent Care Integration Matrix</h3>
+<div id="urgentCareMatrix"></div>
+</div>
+</div>
+</section>
+
+<!-- ANALYST VIEW -->
+<section id="viewAnalyst" class="view-section">
+<div class="lg:hidden mb-4" id="mobileNavBar">
+<div class="mobile-nav-tabs" role="tablist" aria-label="Analyst navigation">
+<button type="button" class="mobile-nav-tab active" data-nav="dashboard" role="tab" aria-selected="true">Dashboard</button>
+<button type="button" class="mobile-nav-tab" data-nav="agents" role="tab" aria-selected="false">Agents</button>
+<button type="button" class="mobile-nav-tab" data-nav="incidents" role="tab" aria-selected="false">Incidents</button>
+<button type="button" class="mobile-nav-tab" data-nav="heatmap" role="tab" aria-selected="false">Heatmap</button>
+<button type="button" class="mobile-nav-tab" data-nav="urgent" role="tab" aria-selected="false">Urgent Care</button>
+</div>
+</div>
+<div class="flex gap-6">
+<aside class="hidden lg:block w-64 shrink-0 sidebar-glass rounded-xl p-4 border">
+<div class="mb-4 pb-4 border-b border-slate-200" id="currentUserProfile">
+<p class="font-bold text-sm" id="currentUserName">SOC Operator</p>
+<p class="text-xs text-slate-500" id="currentUserRole">Agentic SOC</p>
+</div>
+<input type="text" placeholder="Search navigation..." class="w-full text-xs border rounded-lg px-3 py-2 mb-4 bg-white" id="sidebarSearch" autocomplete="off">
+<nav id="sidebarNav">
+<div class="nav-section">Monitoring</div>
+<div class="nav-item active" data-nav="dashboard" tabindex="0" role="button"><span>▦</span> Dashboard</div>
+<div class="nav-item" data-nav="agents" tabindex="0" role="button"><span>◎</span> Live Agents Monitoring</div>
+<div class="nav-item" data-nav="incidents" tabindex="0" role="button"><span>⚠</span> Incidents</div>
+<div class="nav-section">Analysis &amp; Risk</div>
+<div class="nav-item" data-nav="heatmap" tabindex="0" role="button"><span>▤</span> Risk Heatmap</div>
+<div class="nav-item" data-nav="perf" tabindex="0" role="button"><span>📊</span> Performance Metrics</div>
+<div class="nav-item" data-nav="policy" tabindex="0" role="button"><span>📋</span> Policy Management</div>
+<div class="nav-section">System Health</div>
+<div class="nav-item" data-nav="urgent" tabindex="0" role="button"><span>♥</span> Urgent Care</div>
+<div class="nav-section">Logs &amp; Admin</div>
+<div class="nav-item" data-nav="notifications" tabindex="0" role="button"><span>🔔</span> Notifications</div>
+<div class="nav-item" data-nav="roles" tabindex="0" role="button"><span>👥</span> User Roles &amp; Permissions</div>
+</nav>
+</aside>
+<div class="flex-1 space-y-6 min-w-0">
+<div id="analyst-dashboard" class="flex flex-wrap items-center justify-between gap-3 scroll-mt-20">
+<h2 class="text-lg font-bold text-slate-800">Agent Fleet Monitoring</h2>
+<div class="flex flex-wrap gap-2">
+<input type="text" id="agentSearch" placeholder="Search agents..." class="text-xs border rounded-lg px-3 py-1.5 bg-white w-40">
+<select id="statusFilter" class="text-xs border rounded-lg px-2 py-1.5 bg-white">
+<option value="ALL">All Status</option>
+<option value="Running">Running</option>
+<option value="Idle">Idle</option>
+<option value="Paused">Paused</option>
+<option value="Blocked">Blocked</option>
+</select>
+<select id="urgencyFilter" class="text-xs border rounded-lg px-2 py-1.5 bg-white">
+<option value="ALL">All Urgency</option>
+<option value="CRITICAL">Critical</option>
+<option value="HIGH">High+</option>
+</select>
+<button onclick="exportAgentData()" class="text-xs border rounded-lg px-3 py-1.5 bg-white font-medium hover:bg-slate-50">Export</button>
+<button onclick="refreshAgentTable()" class="text-xs border rounded-lg px-3 py-1.5 bg-white font-medium hover:bg-slate-50">Refresh</button>
+</div>
+</div>
+<div id="analyst-agents" class="glass-card rounded-xl overflow-hidden scroll-mt-20">
+<div class="overflow-x-auto">
+<table class="data-table" id="agentMonitoringTable">
+<thead>
+<tr>
+<th>Agent</th><th>Latest Task</th><th>Max Urgency</th><th>CPU %</th><th>Memory</th><th>Status</th><th>Last Activity</th><th>Incidents</th><th></th>
+</tr>
+</thead>
+<tbody id="agentTableBody"></tbody>
+</table>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+<div id="analyst-heatmap" class="glass-card rounded-xl p-5 scroll-mt-20">
+<div class="flex items-center justify-between mb-4">
+<h3 class="font-bold text-sm text-slate-700">UrgencyScore Risk Heatmap</h3>
+<select id="heatmapYear" class="text-xs border rounded px-2 py-1 bg-white"><option>2026</option><option>2025</option></select>
+</div>
+<div id="analystHeatmap" class="overflow-x-auto"></div>
+<div class="mt-3 flex items-center gap-2 text-xs text-slate-500"><span>Low</span><div class="flex-1 legend-bar"></div><span>Critical</span></div>
+</div>
+<div id="analyst-incidents" class="glass-card rounded-xl p-5 scroll-mt-20">
+<h3 class="font-bold text-sm text-slate-700 mb-4">Live Incident Stream</h3>
+<div id="incidentStream" class="max-h-[400px] overflow-y-auto"></div>
+</div>
+</div>
+<div id="analyst-perf" class="glass-card rounded-xl p-5 scroll-mt-20">
+<h3 class="font-bold text-sm text-slate-700 mb-2">Performance Metrics</h3>
+<p class="text-sm text-slate-500">Agent CPU, memory, and throughput trends. Switch to SOC Manager view for full charts.</p>
+</div>
+<div id="analyst-policy" class="glass-card rounded-xl p-5 scroll-mt-20">
+<h3 class="font-bold text-sm text-slate-700 mb-2">Policy Management</h3>
+<p class="text-sm text-slate-500">Policy rules and enforcement status (demo placeholder).</p>
+</div>
+<div id="analyst-urgent" class="glass-card rounded-xl p-5 scroll-mt-20">
+<h3 class="font-bold text-sm text-slate-700 mb-4">Urgent Care Integration Matrix</h3>
+<div id="analystUrgentCare"></div>
+</div>
+<div id="analyst-notifications" class="glass-card rounded-xl p-5 scroll-mt-20">
+<h3 class="font-bold text-sm text-slate-700 mb-2">Notifications</h3>
+<p class="text-sm text-slate-500">Alert routing and notification preferences (demo placeholder).</p>
+</div>
+<div id="analyst-roles" class="glass-card rounded-xl p-5 scroll-mt-20">
+<h3 class="font-bold text-sm text-slate-700 mb-2">User Roles &amp; Permissions</h3>
+<p class="text-sm text-slate-500">RBAC configuration and access audit (demo placeholder).</p>
+</div>
+</div>
+</div>
+</section>
+
+</main>
+
+<script>
+const MOCK_INCIDENTS = [
+{timestamp:"2026-06-27T14:15:22Z",incidentId:"INC-2026-8842",agentContext:{name:"Bob (Threat Hunter Agent)",role:"Threat Hunter",task:"Scan Internal Docs"},networkTelemetry:{sourceIp:"185.220.101.5",destIp:"10.0.4.155",sourcePort:443,destPort:445,protocol:"SMB/TCP",packetLength:2048,trafficType:"Lateral Movement"},behavioralTelemetry:{payloadSummary:"EternalBlue exploit chain via SMB v1",malwareIndicator:"Trojan.Ransom.CryptoLocker",anomalyScore:98.4,alertWarningString:"CRITICAL: Ransomware pre-encryption behavior detected"},characterization:{attackType:"Ransomware Exploit",attackSignature:"CVE-2017-0144 EternalBlue",logSource:"CrowdStrike Falcon",controlAction:"BLOCKED"},identityDeviceContext:{userPrincipal:"s.roberts@enterprise.com",userPrivilege:"DB Admin (High)",hostname:"FIN-DB-PROD-01",deviceType:"RHEL 8.6 Server",networkSegment:"PCI-DSS Zone",geoCountry:"RU (Proxy Exit)"},businessImpact:{urgencyScore:88,severityLevel:"CRITICAL",serviceImpacted:"Financial Transaction DB",assetCriticality:"Crown Jewel",regulatoryExposure:"PCI-DSS / GDPR"},cpu:88,memory:"1.2 GB",executionStatus:"Blocked",lastActivity:"2m ago"},
+{timestamp:"2026-06-27T14:18:05Z",incidentId:"INC-2026-8843",agentContext:{name:"Sue (SOC Analyst Agent)",role:"SOC Analyst",task:"Scan Internal Docs"},networkTelemetry:{sourceIp:"45.12.99.12",destIp:"10.0.1.50",sourcePort:22,destPort:22,protocol:"SSH/TCP",packetLength:512,trafficType:"Brute Force"},behavioralTelemetry:{payloadSummary:"SSH auth failure sweep 847 attempts",malwareIndicator:"None",anomalyScore:72,alertWarningString:"HIGH: Impossible travel login pattern"},characterization:{attackType:"Credential Abuse",attackSignature:"SSH-BruteForce-v3",logSource:"Azure AD Protection",controlAction:"BLOCKED"},identityDeviceContext:{userPrincipal:"j.doe@enterprise.com",userPrivilege:"Standard User",hostname:"Cloud-IAM-Portal",deviceType:"SaaS Identity Provider",networkSegment:"DMZ",geoCountry:"CN"},businessImpact:{urgencyScore:72,severityLevel:"HIGH",serviceImpacted:"Identity & Access Management",assetCriticality:"High",regulatoryExposure:"SOC2"},cpu:61,memory:"512 MB",executionStatus:"Running",lastActivity:"12s ago"},
+{timestamp:"2026-06-27T14:20:11Z",incidentId:"INC-2026-8844",agentContext:{name:"Muhammad (Threat Intelligence Agent)",role:"Threat Intelligence",task:"Scan Internal Docs"},networkTelemetry:{sourceIp:"10.0.4.155",destIp:"52.219.0.0",sourcePort:8443,destPort:443,protocol:"HTTPS/TCP",packetLength:4096,trafficType:"Data Exfiltration"},behavioralTelemetry:{payloadSummary:"Encrypted tunnel to unauthorized S3 bucket",malwareIndicator:"APT29.Backdoor",anomalyScore:75.8,alertWarningString:"HIGH: Unusual egress volume 2.4GB"},characterization:{attackType:"Data Exfiltration",attackSignature:"DNS-Tunnel-Exfil-v2",logSource:"Palo Alto NGFW",controlAction:"LOGGED"},identityDeviceContext:{userPrincipal:"l.vaughn@enterprise.com",userPrivilege:"R&D Engineer",hostname:"R&D-Workstation-04",deviceType:"Windows 11 Pro",networkSegment:"R&D Lab",geoCountry:"US (Internal)"},businessImpact:{urgencyScore:72,severityLevel:"HIGH",serviceImpacted:"IP & Research Data",assetCriticality:"High",regulatoryExposure:"ITAR"},cpu:61,memory:"512 MB",executionStatus:"Paused",lastActivity:"5m ago"},
+{timestamp:"2026-06-27T14:22:30Z",incidentId:"INC-2026-8845",agentContext:{name:"Jose (Detections Engineering Agent)",role:"Detections Engineer",task:"API Audit"},networkTelemetry:{sourceIp:"203.0.113.88",destIp:"10.0.0.10",sourcePort:80,destPort:8080,protocol:"HTTP/TCP",packetLength:1024,trafficType:"Web Application Attack"},behavioralTelemetry:{payloadSummary:"SQL injection in /api/v2/users endpoint",malwareIndicator:"None",anomalyScore:22,alertWarningString:"LOW: Pattern matched WAF rule 4412"},characterization:{attackType:"Web Injection",attackSignature:"SQLi-UnionSelect-v1",logSource:"WAF / ModSecurity",controlAction:"BLOCKED"},identityDeviceContext:{userPrincipal:"anonymous",userPrivilege:"Unauthenticated",hostname:"Public-Bastion-01",deviceType:"Nginx Reverse Proxy",networkSegment:"DMZ Public",geoCountry:"US"},businessImpact:{urgencyScore:22,severityLevel:"LOW",serviceImpacted:"Public API Gateway",assetCriticality:"Medium",regulatoryExposure:"None"},cpu:12,memory:"220 MB",executionStatus:"Idle",lastActivity:"1m ago"},
+{timestamp:"2026-06-27T13:45:00Z",incidentId:"INC-2026-8846",agentContext:{name:"Sue (SOC Analyst Agent)",role:"SOC Analyst",task:"Optimize Database"},networkTelemetry:{sourceIp:"10.0.2.30",destIp:"10.0.2.31",sourcePort:5432,destPort:5432,protocol:"PostgreSQL/TCP",packetLength:256,trafficType:"Internal Query"},behavioralTelemetry:{payloadSummary:"Unusual SELECT * on PII table at 03:00 UTC",malwareIndicator:"None",anomalyScore:70,alertWarningString:"HIGH: Off-hours bulk data query"},characterization:{attackType:"Insider Threat",attackSignature:"UEBA-OffHours-PII-v1",logSource:"Splunk UEBA",controlAction:"PAUSED"},identityDeviceContext:{userPrincipal:"admin.service@enterprise.com",userPrivilege:"Service Account",hostname:"DB-CLUSTER-01",deviceType:"PostgreSQL 15",networkSegment:"Data Tier",geoCountry:"DE"},businessImpact:{urgencyScore:70,severityLevel:"HIGH",serviceImpacted:"Customer PII Database",assetCriticality:"Crown Jewel",regulatoryExposure:"GDPR"},cpu:55,memory:"1 GB",executionStatus:"Paused",lastActivity:"2h ago"},
+{timestamp:"2026-06-27T13:30:00Z",incidentId:"INC-2026-8847",agentContext:{name:"Sue (SOC Analyst Agent)",role:"SOC Analyst",task:"Backup User Data"},networkTelemetry:{sourceIp:"10.0.5.10",destIp:"10.0.5.20",sourcePort:22,destPort:22,protocol:"SFTP/TCP",packetLength:8192,trafficType:"Backup Transfer"},behavioralTelemetry:{payloadSummary:"Scheduled backup to offsite vault",malwareIndicator:"None",anomalyScore:60,alertWarningString:"MEDIUM: Backup size 40% above baseline"},characterization:{attackType:"Policy Deviation",attackSignature:"Backup-Anomaly-v1",logSource:"Veeam Backup",controlAction:"IDLE"},identityDeviceContext:{userPrincipal:"backup.svc@enterprise.com",userPrivilege:"Backup Operator",hostname:"BACKUP-VAULT-01",deviceType:"Linux Backup Server",networkSegment:"Backup Zone",geoCountry:"DE"},businessImpact:{urgencyScore:60,severityLevel:"MEDIUM",serviceImpacted:"User Data Backup",assetCriticality:"Medium",regulatoryExposure:"GDPR"},cpu:40,memory:"256 MB",executionStatus:"Idle",lastActivity:"1h ago"},
+{timestamp:"2026-06-27T12:00:00Z",incidentId:"INC-2026-8848",agentContext:{name:"Bob (Threat Hunter Agent)",role:"Threat Hunter",task:"Audit Access Logs"},networkTelemetry:{sourceIp:"192.168.1.100",destIp:"10.0.3.50",sourcePort:3389,destPort:3389,protocol:"RDP/TCP",packetLength:1500,trafficType:"Remote Access"},behavioralTelemetry:{payloadSummary:"RDP session from compromised workstation",malwareIndicator:"Emotet.Dropper",anomalyScore:85,alertWarningString:"CRITICAL: Lateral RDP after phishing"},characterization:{attackType:"Lateral Movement",attackSignature:"RDP-Lateral-v2",logSource:"Microsoft Defender",controlAction:"BLOCKED"},identityDeviceContext:{userPrincipal:"m.chen@enterprise.com",userPrivilege:"Finance Analyst",hostname:"FIN-WS-12",deviceType:"Windows 10 Enterprise",networkSegment:"Finance VLAN",geoCountry:"SG"},businessImpact:{urgencyScore:85,severityLevel:"CRITICAL",serviceImpacted:"Finance Workstation Fleet",assetCriticality:"High",regulatoryExposure:"SOX"},cpu:80,memory:"256 MB",executionStatus:"Blocked",lastActivity:"30m ago"},
+{timestamp:"2026-06-27T11:00:00Z",incidentId:"INC-2026-8849",agentContext:{name:"Bob (Threat Hunter Agent)",role:"Threat Hunter",task:"Optimize Database"},networkTelemetry:{sourceIp:"10.0.2.31",destIp:"10.0.2.30",sourcePort:3306,destPort:3306,protocol:"MySQL/TCP",packetLength:512,trafficType:"Database Admin"},behavioralTelemetry:{payloadSummary:"DROP TABLE attempt on production schema",malwareIndicator:"None",anomalyScore:90,alertWarningString:"CRITICAL: Destructive DDL on production"},characterization:{attackType:"Data Destruction",attackSignature:"DDL-DropTable-v1",logSource:"Database Audit Log",controlAction:"IDLE"},identityDeviceContext:{userPrincipal:"dba.admin@enterprise.com",userPrivilege:"DBA Superuser",hostname:"DB-CLUSTER-01",deviceType:"MySQL 8.0",networkSegment:"Data Tier",geoCountry:"DE"},businessImpact:{urgencyScore:90,severityLevel:"CRITICAL",serviceImpacted:"Production Database",assetCriticality:"Crown Jewel",regulatoryExposure:"PCI-DSS"},cpu:30,memory:"1 GB",executionStatus:"Idle",lastActivity:"2h ago"},
+{timestamp:"2026-06-27T10:00:00Z",incidentId:"INC-2026-8850",agentContext:{name:"Jose (Detections Engineering Agent)",role:"Detections Engineer",task:"Deploy New Features"},networkTelemetry:{sourceIp:"10.0.6.5",destIp:"10.0.6.10",sourcePort:443,destPort:443,protocol:"HTTPS/TCP",packetLength:2048,trafficType:"CI/CD Pipeline"},behavioralTelemetry:{payloadSummary:"Unsigned container image pushed to registry",malwareIndicator:"None",anomalyScore:70,alertWarningString:"HIGH: Container signature verification failed"},characterization:{attackType:"Supply Chain",attackSignature:"Unsigned-Container-v1",logSource:"Harbor Registry",controlAction:"PAUSED"},identityDeviceContext:{userPrincipal:"ci.bot@enterprise.com",userPrivilege:"CI/CD Service",hostname:"K8S-REGISTRY-01",deviceType:"Kubernetes Node",networkSegment:"DevOps",geoCountry:"US"},businessImpact:{urgencyScore:70,severityLevel:"HIGH",serviceImpacted:"Container Registry",assetCriticality:"High",regulatoryExposure:"SOC2"},cpu:61,memory:"128 MB",executionStatus:"Idle",lastActivity:"4h ago"},
+{timestamp:"2026-06-27T09:00:00Z",incidentId:"INC-2026-8851",agentContext:{name:"Muhammad (Threat Intelligence Agent)",role:"Threat Intelligence",task:"Scan Internal Docs"},networkTelemetry:{sourceIp:"198.51.100.42",destIp:"10.0.0.5",sourcePort:53,destPort:53,protocol:"DNS/UDP",packetLength:128,trafficType:"DNS Tunneling"},behavioralTelemetry:{payloadSummary:"High-entropy DNS queries to DGA domain",malwareIndicator:"CobaltStrike.Beacon",anomalyScore:82,alertWarningString:"HIGH: DNS tunneling to known C2"},characterization:{attackType:"C2 Communication",attackSignature:"DNS-DGA-C2-v3",logSource:"Cisco Umbrella",controlAction:"BLOCKED"},identityDeviceContext:{userPrincipal:"unknown",userPrivilege:"N/A",hostname:"CORP-LAPTOP-88",deviceType:"macOS 14",networkSegment:"Corporate LAN",geoCountry:"BR"},businessImpact:{urgencyScore:72,severityLevel:"HIGH",serviceImpacted:"Endpoint Fleet",assetCriticality:"Medium",regulatoryExposure:"None"},cpu:61,memory:"512 MB",executionStatus:"Running",lastActivity:"1h ago"},
+{timestamp:"2026-06-27T08:00:00Z",incidentId:"INC-2026-8852",agentContext:{name:"Sue (SOC Analyst Agent)",role:"SOC Analyst",task:"Scan Internal Docs"},networkTelemetry:{sourceIp:"10.0.1.20",destIp:"10.0.1.25",sourcePort:25,destPort:25,protocol:"SMTP/TCP",packetLength:4096,trafficType:"Email"},behavioralTelemetry:{payloadSummary:"Spear-phishing email with macro attachment",malwareIndicator:"Emotet.Phishing",anomalyScore:50,alertWarningString:"LOW: Phishing score below auto-block threshold"},characterization:{attackType:"Phishing",attackSignature:"Phish-Macro-v2",logSource:"Proofpoint TAP",controlAction:"LOGGED"},identityDeviceContext:{userPrincipal:"external.sender@evil.com",userPrivilege:"External",hostname:"MAIL-GW-01",deviceType:"Email Gateway",networkSegment:"DMZ",geoCountry:"NG"},businessImpact:{urgencyScore:50,severityLevel:"LOW",serviceImpacted:"Email Gateway",assetCriticality:"Medium",regulatoryExposure:"None"},cpu:61,memory:"512 MB",executionStatus:"Running",lastActivity:"2h ago"},
+{timestamp:"2026-06-27T07:00:00Z",incidentId:"INC-2026-8853",agentContext:{name:"Bob (Threat Hunter Agent)",role:"Threat Hunter",task:"Scan Internal Docs"},networkTelemetry:{sourceIp:"10.0.4.200",destIp:"10.0.4.201",sourcePort:161,destPort:161,protocol:"SNMP/UDP",packetLength:64,trafficType:"Network Recon"},behavioralTelemetry:{payloadSummary:"SNMP community string brute force",malwareIndicator:"None",anomalyScore:72,alertWarningString:"HIGH: SNMP enumeration detected"},characterization:{attackType:"Network Reconnaissance",attackSignature:"SNMP-Enum-v1",logSource:"Network IDS",controlAction:"IDLE"},identityDeviceContext:{userPrincipal:"network.scanner",userPrivilege:"Automated Scanner",hostname:"NET-SWITCH-42",deviceType:"Cisco Catalyst 9300",networkSegment:"Network Infrastructure",geoCountry:"DE"},businessImpact:{urgencyScore:72,severityLevel:"HIGH",serviceImpacted:"Network Infrastructure",assetCriticality:"High",regulatoryExposure:"None"},cpu:61,memory:"512 MB",executionStatus:"Idle",lastActivity:"2h ago"}
+];
+
+const INTEGRATIONS = [
+{name:"Slack Webhook",status:"Healthy",lastCheck:"Today 03:01"},
+{name:"Internal API",status:"Healthy",lastCheck:"2 min ago"},
+{name:"Redis DB",status:"Degraded",lastCheck:"Yesterday"},
+{name:"Redis DB (Replica)",status:"Degraded",lastCheck:"Yesterday"},
+{name:"Internal API (Legacy)",status:"Failed",lastCheck:"Yesterday"}
+];
+
+const AUDIT_LOG = [
+{icon:"⏸",title:"Paused Agent",msg:"Admin JohnDoe paused agent 'vault-agent'",time:"12m ago"},
+{icon:"📋",title:"Policy Updated",msg:'Policy "Restrict External API" updated',time:"12m ago"},
+{icon:"🔄",title:"Agent Update",msg:"Replayed action log for agent-audit-2",time:"15m ago"},
+{icon:"🔄",title:"Agent Update",msg:"SOAR playbook PB-4412 executed successfully",time:"22m ago"},
+{icon:"📋",title:"Policy Updated",msg:"GDPR data retention policy v3.2 deployed",time:"1h ago"}
+];
+
+const HEATMAP_DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+const HEATMAP_WEEKS = 52;
+const HEATMAP_MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+const RISK_CONFIG = {
+  urgencyBands: { critical: 85, high: 70, medium: 50 },
+  heatmapBands: [90, 75, 60, 40, 20],
+  lossMultiplier: 1500,
+  riskIndexWeights: { critical: 4, high: 2, medium: 1, low: 0.25 }
+};
+
+const REGULATORY_FRAMEWORKS = ["PCI-DSS", "GDPR", "SOC2", "SOX", "ITAR"];
+
+// Configurable operator profile (no hard-coded personal data)
+const CURRENT_USER = { name: "SOC Operator", role: "Agentic SOC" };
+
+let currentRole = "CISO";
+let chartInstances = {};
+let heatmapData = [];
+let lastFocusedElement = null;
+
+function wrapChartLabel(label, maxLen) {
+  maxLen = maxLen || 16;
+  if (typeof label !== "string" || label.length <= maxLen) return label;
+  const words = label.split(" ");
+  const lines = [];
+  let current = "";
+  words.forEach(function(w) {
+    if ((current + " " + w).trim().length > maxLen) {
+      if (current) lines.push(current.trim());
+      current = w;
+    } else {
+      current = (current + " " + w).trim();
+    }
+  });
+  if (current) lines.push(current.trim());
+  return lines;
+}
+
+function wrapLabelsArray(labels) {
+  return labels.map(function(l) { return wrapChartLabel(l); });
+}
+
+function urgencyLabel(score) {
+  const b = RISK_CONFIG.urgencyBands;
+  if (score >= b.critical) return "Critical";
+  if (score >= b.high) return "High";
+  if (score >= b.medium) return "Medium";
+  return "Low";
+}
+
+function statusClass(status) {
+  const map = {Running:"status-running",Idle:"status-idle",Paused:"status-paused",Blocked:"status-blocked"};
+  return map[status] || "status-idle";
+}
+
+function sevClass(sev) {
+  return "sev-" + sev.toLowerCase();
+}
+
+function healthClass(s) {
+  const map = {Healthy:"health-healthy",Degraded:"health-degraded",Failed:"health-failed"};
+  return map[s] || "health-degraded";
+}
+
+function heatmapColor(score) {
+  const bands = RISK_CONFIG.heatmapBands;
+  const colors = ["#991b1b", "#ef4444", "#f97316", "#fbbf24", "#fde68a", "#fef3c7"];
+  if (score >= bands[0]) return colors[0];
+  if (score >= bands[1]) return colors[1];
+  if (score >= bands[2]) return colors[2];
+  if (score >= bands[3]) return colors[3];
+  if (score >= bands[4]) return colors[4];
+  return colors[5];
+}
+
+// Derive heatmap cells from MOCK_INCIDENTS; baseline noise fills empty weeks (demo-level)
+function generateHeatmapData() {
+  heatmapData = [];
+  for (let d = 0; d < 7; d++) {
+    for (let w = 0; w < HEATMAP_WEEKS; w++) {
+      heatmapData.push({
+        day: HEATMAP_DAYS[d], week: w,
+        score: Math.floor(Math.random() * 12),
+        date: HEATMAP_MONTHS[Math.min(Math.floor(w / 4.33), 11)] + " w" + (w + 1) + ", " + HEATMAP_DAYS[d],
+        agent: "—", policy: "Baseline activity"
+      });
+    }
+  }
+  MOCK_INCIDENTS.forEach(function(inc) {
+    const dt = new Date(inc.timestamp);
+    const startOfYear = new Date(dt.getFullYear(), 0, 1);
+    const dayOfYear = Math.floor((dt - startOfYear) / 86400000);
+    const week = Math.min(Math.floor(dayOfYear / 7), HEATMAP_WEEKS - 1);
+    const day = (dt.getDay() + 6) % 7;
+    const idx = day * HEATMAP_WEEKS + week;
+    const score = inc.businessImpact.urgencyScore;
+    if (score >= heatmapData[idx].score) {
+      heatmapData[idx] = {
+        day: HEATMAP_DAYS[day], week: week, score: score,
+        date: HEATMAP_MONTHS[dt.getMonth()] + " " + dt.getDate() + ", " + HEATMAP_DAYS[day],
+        agent: inc.agentContext.name,
+        policy: inc.characterization.attackType
+      };
+    }
+  });
+}
+
+// NOTE: aggregated from MOCK_INCIDENTS — replace with live agent telemetry feed
+function aggregateAgentsByName() {
+  const groups = {};
+  MOCK_INCIDENTS.forEach(function(inc) {
+    const name = inc.agentContext.name;
+    if (!groups[name]) groups[name] = [];
+    groups[name].push(inc);
+  });
+  return Object.keys(groups).map(function(name) {
+    const incidents = groups[name].sort(function(a, b) {
+      return new Date(b.timestamp) - new Date(a.timestamp);
+    });
+    const latest = incidents[0];
+    const maxUrgency = Math.max.apply(null, incidents.map(function(i) { return i.businessImpact.urgencyScore; }));
+    return {
+      name: name,
+      latest: latest,
+      maxUrgency: maxUrgency,
+      incidentCount: incidents.length
+    };
+  });
+}
+
+function computeRiskIndex() {
+  const w = RISK_CONFIG.riskIndexWeights;
+  const counts = { critical: 0, high: 0, medium: 0, low: 0 };
+  MOCK_INCIDENTS.forEach(function(inc) {
+    const level = (inc.businessImpact.severityLevel || "medium").toLowerCase();
+    if (counts[level] !== undefined) counts[level]++;
+  });
+  const raw = counts.critical * w.critical + counts.high * w.high +
+    counts.medium * w.medium + counts.low * w.low;
+  const max = MOCK_INCIDENTS.length * w.critical;
+  return max > 0 ? Math.min(100, Math.round((raw / max) * 100)) : 0;
+}
+
+function computeFrameworkCompliance() {
+  const covered = new Set();
+  MOCK_INCIDENTS.forEach(function(i) {
+    const exp = i.businessImpact.regulatoryExposure;
+    if (exp && exp !== "None") {
+      REGULATORY_FRAMEWORKS.forEach(function(f) { if (exp.indexOf(f) !== -1) covered.add(f); });
+    }
+  });
+  const base = 88;
+  const coverageBonus = (covered.size / REGULATORY_FRAMEWORKS.length) * 10;
+  const tagged = MOCK_INCIDENTS.filter(function(i) { return i.businessImpact.regulatoryExposure !== "None"; }).length;
+  const incidentBonus = tagged > 0 ? Math.min(2, tagged * 0.2) : 0;
+  return Math.min(99.9, base + coverageBonus + incidentBonus).toFixed(1);
+}
+
+function computePreventedLoss() {
+  const total = MOCK_INCIDENTS.reduce(function(s, i) {
+    return s + i.businessImpact.urgencyScore * RISK_CONFIG.lossMultiplier;
+  }, 0);
+  if (total >= 1000000) return "$" + (total / 1000000).toFixed(2) + "M";
+  if (total >= 1000) return "$" + (total / 1000).toFixed(0) + "K";
+  return "$" + total.toLocaleString();
+}
+
+// TODO: wire MTTD/MTTR to real detectedAt/resolvedAt timestamps when available in incident data
+function computeMTTD() {
+  var avg = MOCK_INCIDENTS.reduce(function(s, i) {
+    return s + (100 - i.behavioralTelemetry.anomalyScore) * 0.06;
+  }, 0) / MOCK_INCIDENTS.length;
+  return Math.max(1, avg).toFixed(1);
+}
+
+function computeMTTR() {
+  var weights = { Blocked: 18, Running: 38, Paused: 52, Idle: 68 };
+  var avg = MOCK_INCIDENTS.reduce(function(s, i) {
+    return s + (weights[i.executionStatus] || 45);
+  }, 0) / MOCK_INCIDENTS.length;
+  return Math.round(avg);
+}
+
+function computeSLACompliance() {
+  var blocked = MOCK_INCIDENTS.filter(function(i) { return i.executionStatus === "Blocked"; }).length;
+  var critical = MOCK_INCIDENTS.filter(function(i) { return i.businessImpact.severityLevel === "CRITICAL"; }).length;
+  var rate = critical > 0 ? (blocked / critical) * 100 : 95;
+  return Math.min(99.9, Math.max(85, rate)).toFixed(1);
+}
+
+function renderHeatmap(containerId) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  let html = '<div class="heatmap-grid">';
+  html += '<div></div>';
+  for (let w = 0; w < HEATMAP_WEEKS; w++) {
+    if (w % 4 === 0) {
+      html += '<div class="text-xs text-slate-400 text-center">' +
+        HEATMAP_MONTHS[Math.floor(w / 4.33) % 12] + '</div>';
+    } else {
+      html += '<div></div>';
+    }
+  }
+  for (let d = 0; d < 7; d++) {
+    html += '<div class="text-xs text-slate-400 flex items-center">' +
+      (d === 0 ? "Mon" : d === 3 ? "Thu" : d === 6 ? "Sun" : "") + '</div>';
+    for (let w = 0; w < HEATMAP_WEEKS; w++) {
+      const cell = heatmapData[d * HEATMAP_WEEKS + w];
+      const label = "Risk score " + cell.score + " on " + cell.date + ", agent " + cell.agent + ", trigger " + cell.policy;
+      html += '<div class="heatmap-cell" role="button" tabindex="0" aria-label="' + label + '" ' +
+        'style="background:' + heatmapColor(cell.score) + '" data-idx="' + (d * HEATMAP_WEEKS + w) + '"></div>';
+    }
+  }
+  html += '</div>';
+  el.innerHTML = html;
+  el.querySelectorAll(".heatmap-cell").forEach(function(cell) {
+    function showTooltip(e) {
+      const idx = parseInt(cell.dataset.idx, 10);
+      const c = heatmapData[idx];
+      const tip = document.getElementById("heatmapTooltip");
+      tip.innerHTML = '<p class="font-bold text-slate-800 mb-1">' +
+        (c.score >= RISK_CONFIG.heatmapBands[1] ? "Critical Risk Detected" : "Risk Event") +
+        '</p><p class="text-slate-500">Date: ' + c.date + '</p><p>Agent: ' + c.agent +
+        '</p><p>Peak Score: ' + c.score + ' / 100</p><p>Trigger: ' + c.policy + '</p>';
+      tip.style.display = "block";
+      tip.style.left = (e.clientX + 12) + "px";
+      tip.style.top = (e.clientY - 10) + "px";
+    }
+    cell.addEventListener("mouseenter", showTooltip);
+    cell.addEventListener("focus", showTooltip);
+    cell.addEventListener("mouseleave", function() {
+      document.getElementById("heatmapTooltip").style.display = "none";
+    });
+    cell.addEventListener("blur", function() {
+      document.getElementById("heatmapTooltip").style.display = "none";
+    });
+  });
+}
+
+function renderAgentTable() {
+  const search = (document.getElementById("agentSearch")?.value || "").toLowerCase();
+  const statusF = document.getElementById("statusFilter")?.value || "ALL";
+  const urgencyF = document.getElementById("urgencyFilter")?.value || "ALL";
+  const tbody = document.getElementById("agentTableBody");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+  aggregateAgentsByName().filter(function(row) {
+    const inc = row.latest;
+    const matchSearch = !search || row.name.toLowerCase().includes(search) || inc.agentContext.task.toLowerCase().includes(search);
+    const matchStatus = statusF === "ALL" || inc.executionStatus === statusF;
+    const matchUrgency = urgencyF === "ALL" ||
+      (urgencyF === "CRITICAL" && row.maxUrgency >= RISK_CONFIG.urgencyBands.critical) ||
+      (urgencyF === "HIGH" && row.maxUrgency >= RISK_CONFIG.urgencyBands.high);
+    return matchSearch && matchStatus && matchUrgency;
+  }).forEach(function(row) {
+    const inc = row.latest;
+    const tr = document.createElement("tr");
+    tr.innerHTML = '<td class="font-medium">' + row.name + '</td><td>' + inc.agentContext.task +
+      '</td><td><span class="font-semibold">' + row.maxUrgency +
+      '</span> <span class="text-slate-400 text-xs">(' + urgencyLabel(row.maxUrgency) + ')</span></td><td>' +
+      inc.cpu + '%</td><td>' + inc.memory +
+      '</td><td><span class="px-2 py-0.5 rounded-full text-xs font-semibold ' + statusClass(inc.executionStatus) +
+      '">' + inc.executionStatus + '</span></td><td class="text-slate-500 text-xs">' + inc.lastActivity +
+      '</td><td class="text-slate-500 text-xs">' + row.incidentCount +
+      '</td><td><button type="button" class="btn-view" data-id="' + inc.incidentId + '">View Details</button></td>';
+    tr.querySelector(".btn-view").addEventListener("click", function(e) { e.stopPropagation(); openThreatDetail(inc); });
+    tr.addEventListener("click", function() { openThreatDetail(inc); });
+    tbody.appendChild(tr);
+  });
+}
+
+function renderIncidentStream() {
+  const el = document.getElementById("incidentStream");
+  if (!el) return;
+  el.innerHTML = "";
+  MOCK_INCIDENTS.slice(0, 8).forEach(function(inc) {
+    const div = document.createElement("div");
+    div.className = "p-3 border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors";
+    div.innerHTML = '<div class="flex items-center gap-2 mb-1"><span class="px-1.5 py-0.5 rounded text-xs font-bold ' + sevClass(inc.businessImpact.severityLevel) + '">' + inc.businessImpact.severityLevel + '</span><span class="text-sm font-semibold">' + inc.characterization.attackType + '</span></div><p class="text-sm text-slate-500">' + inc.agentContext.name + ' | ' + inc.identityDeviceContext.hostname + '</p><p class="text-xs text-slate-400 font-mono mt-1">' + inc.incidentId + '</p>';
+    div.addEventListener("click", function() { openThreatDetail(inc); });
+    el.appendChild(div);
+  });
+}
+
+function renderUrgentCare(containerId) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  let html = '<div class="space-y-2">';
+  INTEGRATIONS.forEach(function(intg) {
+    html += '<div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg border"><div class="flex items-center gap-3"><span class="font-medium text-sm">' + intg.name + '</span><span class="px-2 py-0.5 rounded-full text-xs font-semibold ' + healthClass(intg.status) + '">' + intg.status + '</span></div><span class="text-xs text-slate-400">' + intg.lastCheck + '</span></div>';
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+function renderAuditLog() {
+  const el = document.getElementById("auditLog");
+  if (!el) return;
+  el.innerHTML = "";
+  AUDIT_LOG.forEach(function(entry) {
+    el.innerHTML += '<div class="audit-item"><div class="flex items-start gap-2"><span>' + entry.icon + '</span><div><p class="font-semibold text-slate-700">' + entry.title + '</p><p class="text-sm text-slate-500">' + entry.msg + '</p><p class="text-xs text-slate-400 mt-1">' + entry.time + '</p></div></div></div>';
+  });
+}
+
+function openThreatDetail(inc) {
+  document.getElementById("detailTitle").textContent = inc.characterization.attackType;
+  document.getElementById("detailId").textContent = inc.incidentId;
+  const sev = inc.businessImpact.severityLevel;
+  const sevEl = document.getElementById("detailSeverity");
+  sevEl.textContent = sev;
+  sevEl.className = "px-2 py-0.5 rounded text-xs font-bold uppercase tracking-widest " + sevClass(sev);
+  document.getElementById("detailImpact").textContent = inc.businessImpact.serviceImpacted + " — " + inc.businessImpact.assetCriticality + " asset. Regulatory: " + inc.businessImpact.regulatoryExposure + ". " + inc.behavioralTelemetry.alertWarningString;
+  document.getElementById("pathSourceIp").textContent = inc.networkTelemetry.sourceIp;
+  document.getElementById("pathSourceGeo").textContent = inc.identityDeviceContext.geoCountry;
+  document.getElementById("pathTargetHost").textContent = inc.identityDeviceContext.hostname;
+  document.getElementById("detailUser").textContent = inc.identityDeviceContext.userPrincipal;
+  document.getElementById("detailPrivilege").textContent = "Role: " + inc.agentContext.role + " | Privilege: " + inc.identityDeviceContext.userPrivilege;
+  document.getElementById("detailAuthAnomaly").textContent = inc.behavioralTelemetry.alertWarningString;
+  document.getElementById("detailHostname").textContent = inc.identityDeviceContext.hostname;
+  document.getElementById("detailDeviceType").textContent = inc.identityDeviceContext.deviceType + " | Segment: " + inc.identityDeviceContext.networkSegment;
+  document.getElementById("detailCVE").textContent = inc.characterization.attackSignature;
+  document.getElementById("detailProtocol").textContent = inc.networkTelemetry.protocol + " | " + inc.networkTelemetry.trafficType;
+  document.getElementById("detailPayload").textContent = inc.behavioralTelemetry.payloadSummary;
+  document.getElementById("detailAnomaly").textContent = "UEBA Anomaly Score: " + inc.behavioralTelemetry.anomalyScore;
+  document.getElementById("detailAlert").textContent = inc.behavioralTelemetry.malwareIndicator !== "None" ? "IOC: " + inc.behavioralTelemetry.malwareIndicator : "";
+  const lossPerHr = inc.businessImpact.urgencyScore * RISK_CONFIG.lossMultiplier;
+  document.getElementById("detailLossExposure").textContent = "$" + lossPerHr.toLocaleString();
+  document.getElementById("detailSOAR").textContent = "PB-" + inc.incidentId.slice(-4);
+  const isoMap = {BLOCKED:"ISOLATED",LOGGED:"MONITORING",PAUSED:"PAUSED",IDLE:"PENDING"};
+  document.getElementById("detailIsolation").textContent = isoMap[inc.characterization.controlAction] || inc.characterization.controlAction;
+  lastFocusedElement = document.activeElement;
+  document.getElementById("threatDetailPanel").classList.add("open");
+  document.getElementById("panelOverlay").classList.add("open");
+  document.getElementById("detailTitle").focus();
+  document.addEventListener("keydown", handleThreatPanelKeydown);
+}
+
+function handleThreatPanelKeydown(e) {
+  if (e.key === "Escape") {
+    closeThreatDetail();
+    return;
+  }
+  if (e.key !== "Tab") return;
+  const panel = document.getElementById("threatDetailPanel");
+  if (!panel.classList.contains("open")) return;
+  const focusable = panel.querySelectorAll('button, [href], [tabindex]:not([tabindex="-1"])');
+  if (!focusable.length) return;
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (e.shiftKey && document.activeElement === first) {
+    e.preventDefault();
+    last.focus();
+  } else if (!e.shiftKey && document.activeElement === last) {
+    e.preventDefault();
+    first.focus();
+  }
+}
+
+function closeThreatDetail() {
+  document.getElementById("threatDetailPanel").classList.remove("open");
+  document.getElementById("panelOverlay").classList.remove("open");
+  document.removeEventListener("keydown", handleThreatPanelKeydown);
+  if (lastFocusedElement && lastFocusedElement.focus) lastFocusedElement.focus();
+}
+
+function switchRole(role) {
+  currentRole = role;
+  document.querySelectorAll("#roleSwitcher [data-role]").forEach(function(btn) {
+    btn.setAttribute("aria-pressed", btn.dataset.role === role ? "true" : "false");
+    if (btn.dataset.role === role) {
+      btn.className = "role-btn px-4 py-1.5 text-xs font-semibold rounded-md bg-white shadow-sm text-slate-900";
+    } else {
+      btn.className = "role-btn px-4 py-1.5 text-xs font-medium rounded-md text-slate-600 hover:bg-slate-200";
+    }
+  });
+  document.getElementById("viewCISO").classList.toggle("active", role === "CISO");
+  document.getElementById("viewManager").classList.toggle("active", role === "Manager");
+  document.getElementById("viewAnalyst").classList.toggle("active", role === "Analyst");
+  if (role === "Manager" && !chartInstances.control) initManagerCharts();
+  updateCounters();
+}
+
+function updateCounters() {
+  const criticals = MOCK_INCIDENTS.filter(function(i) { return i.businessImpact.severityLevel === "CRITICAL"; }).length;
+  const critEl = document.getElementById("cisoCriticalCount");
+  if (critEl) critEl.textContent = String(criticals).padStart(2, "0");
+
+  const riskEl = document.getElementById("cisoRiskIndex");
+  if (riskEl) riskEl.textContent = String(computeRiskIndex());
+
+  const lossEl = document.getElementById("cisoPreventedLoss");
+  if (lossEl) lossEl.textContent = computePreventedLoss();
+
+  const compEl = document.getElementById("cisoCompliance");
+  if (compEl) compEl.textContent = computeFrameworkCompliance();
+
+  const compDetail = document.getElementById("cisoComplianceDetail");
+  if (compDetail) {
+    const covered = [];
+    REGULATORY_FRAMEWORKS.forEach(function(f) {
+      if (MOCK_INCIDENTS.some(function(i) { return i.businessImpact.regulatoryExposure.indexOf(f) !== -1; })) covered.push(f);
+    });
+    compDetail.textContent = covered.length ? covered.join(" / ") + " tagged" : "No regulatory tags in incidents";
+  }
+
+  const mttd = computeMTTD();
+  const mttdEl = document.getElementById("managerMTTD");
+  if (mttdEl) mttdEl.textContent = mttd + "m";
+  const mttdBar = document.getElementById("managerMTTDBar");
+  if (mttdBar) mttdBar.style.width = Math.min(100, parseFloat(mttd) * 8) + "%";
+
+  const mttr = computeMTTR();
+  const mttrEl = document.getElementById("managerMTTR");
+  if (mttrEl) mttrEl.textContent = mttr + "m";
+  const mttrBar = document.getElementById("managerMTTRBar");
+  if (mttrBar) mttrBar.style.width = Math.min(100, mttr) + "%";
+
+  const pipeEl = document.getElementById("managerPipeline");
+  if (pipeEl) pipeEl.innerHTML = (MOCK_INCIDENTS.length * 72) + '<span class="text-sm text-slate-400">/day</span>';
+
+  const slaEl = document.getElementById("managerSLA");
+  if (slaEl) slaEl.textContent = computeSLACompliance() + "%";
+}
+
+function initManagerCharts() {
+  if (chartInstances.control) return;
+  const efficacyLabels = wrapLabelsArray(["Malware Prevention Control","Intrusion Detection System","Data Exfiltration Blocker","DDoS Mitigation Gateway","Authentication Abuse Filter"]);
+  chartInstances.control = new Chart(document.getElementById("controlEfficacyChart"), {
+    type: "bar",
+    data: {
+      labels: efficacyLabels,
+      datasets: [
+        {label:"Blocked",data:[92,85,78,98,90],backgroundColor:"#3b82f6",borderRadius:2},
+        {label:"Logged",data:[8,15,22,2,10],backgroundColor:"#e2e8f0",borderRadius:2}
+      ]
+    },
+    options: {indexAxis:"y",maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{stacked:true,display:false,max:100},y:{stacked:true,grid:{display:false},ticks:{font:{size:10}}}}}
+  });
+  chartInstances.soar = new Chart(document.getElementById("soarHealthChart"), {
+    type: "doughnut",
+    data: {labels:["Automated Playbooks","Manual Containment"],datasets:[{data:[72,28],backgroundColor:["#10b981","#f1f5f9"],borderWidth:0}]},
+    options: {maintainAspectRatio:false,cutout:"75%",plugins:{legend:{position:"bottom",labels:{font:{size:10},boxWidth:10}}}}
+  });
+  const perfLabels = ["09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00"];
+  chartInstances.perf = new Chart(document.getElementById("perfMetricsChart"), {
+    type: "line",
+    data: {
+      labels: perfLabels,
+      datasets: [
+        {label:"CPU Usage",data:[45,62,78,55,80,72,65,58],borderColor:"#3b82f6",backgroundColor:"rgba(59,130,246,.1)",fill:true,tension:.3},
+        {label:"Memory Utilization",data:[30,42,55,48,60,52,45,40],borderColor:"#f59e0b",backgroundColor:"rgba(245,158,11,.1)",fill:true,tension:.3},
+        {label:"Bandwidth Mbps",data:[20,35,50,40,55,48,42,38],borderColor:"#10b981",borderDash:[5,5],tension:.3},
+        {label:"Disk I/O",data:[15,25,30,22,35,28,20,18],borderColor:"#ef4444",tension:.3}
+      ]
+    },
+    options: {maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{font:{size:10},boxWidth:10}}},scales:{y:{beginAtZero:true,max:100,ticks:{callback:function(v){return v+"%"}}},x:{grid:{display:false}}}}
+  });
+}
+
+function drawGlobalMap() {
+  const canvas = document.getElementById("globalMapCanvas");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  const parent = canvas.parentElement;
+  const w = parent?.clientWidth || 640;
+  const h = parent?.clientHeight || 360;
+  canvas.width = w;
+  canvas.height = h;
+  ctx.fillStyle = "#f8fafc";
+  ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = "#e2e8f0";
+  for (let i = 0; i < 40; i++) {
+    ctx.beginPath();
+    ctx.arc(Math.random() * w, Math.random() * h, 1.5 + Math.random() * 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  const vectors = [
+    {s:[0.12,0.35],t:[0.55,0.45],color:"#ef4444",label:"RU"},
+    {s:[0.75,0.25],t:[0.48,0.55],color:"#f59e0b",label:"CN"},
+    {s:[0.30,0.70],t:[0.60,0.40],color:"#ef4444",label:"BR"},
+    {s:[0.85,0.60],t:[0.50,0.50],color:"#3b82f6",label:"SG"}
+  ];
+  let lastTx = null, lastTy = null;
+  vectors.forEach(function(v) {
+    const sx = v.s[0] * w, sy = v.s[1] * h, tx = v.t[0] * w, ty = v.t[1] * h;
+    ctx.strokeStyle = v.color; ctx.lineWidth = 1.5; ctx.setLineDash([6, 4]);
+    ctx.beginPath(); ctx.moveTo(sx, sy);
+    ctx.quadraticCurveTo((sx + tx) / 2, sy - 40, tx, ty); ctx.stroke();
+    ctx.setLineDash([]); ctx.fillStyle = v.color;
+    ctx.beginPath(); ctx.arc(sx, sy, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = v.color; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(tx, ty, 5, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = "#64748b"; ctx.font = "11px Inter"; ctx.fillText(v.label, sx - 8, sy - 8);
+    lastTx = tx;
+    lastTy = ty;
+  });
+  if (lastTx !== null && lastTy !== null) {
+    ctx.fillStyle = "#1e293b"; ctx.font = "bold 11px Inter";
+    ctx.fillText("Frankfurt DC (OT)", lastTx - 30, lastTy + 18);
+  }
+}
+
+function exportAgentData() {
+  const data = MOCK_INCIDENTS.map(function(i) {
+    return {agent:i.agentContext.name,task:i.agentContext.task,urgency:i.businessImpact.urgencyScore,status:i.executionStatus};
+  });
+  const blob = new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "agent_monitoring_export.json";
+  a.click();
+}
+
+function refreshAgentTable() {
+  MOCK_INCIDENTS.forEach(function(inc) {
+    inc.cpu = Math.max(5, Math.min(99, inc.cpu + Math.floor(Math.random()*10-5)));
+  });
+  renderAgentTable();
+}
+
+function updateClock() {
+  document.getElementById("utcClock").textContent = new Date().toISOString().slice(11,19) + " UTC";
+}
+
+document.getElementById("roleSwitcher").addEventListener("click", function(e) {
+  const btn = e.target.closest("[data-role]");
+  if (btn) switchRole(btn.dataset.role);
+});
+
+["agentSearch","statusFilter","urgencyFilter"].forEach(function(id) {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener("input", renderAgentTable);
+  if (el && el.tagName === "SELECT") el.addEventListener("change", renderAgentTable);
+});
+
+function filterSidebarNav() {
+  const query = (document.getElementById("sidebarSearch")?.value || "").toLowerCase().trim();
+  const nav = document.getElementById("sidebarNav");
+  if (!nav) return;
+  nav.querySelectorAll(".nav-item").forEach(function(item) {
+    const match = !query || item.textContent.toLowerCase().includes(query);
+    item.style.display = match ? "" : "none";
+  });
+  nav.querySelectorAll(".nav-section").forEach(function(section) {
+    let sibling = section.nextElementSibling;
+    let hasVisible = false;
+    while (sibling && !sibling.classList.contains("nav-section")) {
+      if (sibling.classList.contains("nav-item") && sibling.style.display !== "none") {
+        hasVisible = true;
+        break;
+      }
+      sibling = sibling.nextElementSibling;
+    }
+    section.style.display = !query || hasVisible ? "" : "none";
+  });
+}
+
+const sidebarSearch = document.getElementById("sidebarSearch");
+if (sidebarSearch) sidebarSearch.addEventListener("input", filterSidebarNav);
+
+function scrollToAnalystSection(navKey) {
+  const target = document.getElementById("analyst-" + navKey);
+  if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+document.querySelectorAll("#sidebarNav .nav-item").forEach(function(item) {
+  item.setAttribute("tabindex", "0");
+  item.setAttribute("aria-pressed", item.classList.contains("active") ? "true" : "false");
+  item.addEventListener("click", function() {
+    document.querySelectorAll("#sidebarNav .nav-item").forEach(function(n) {
+      n.classList.remove("active");
+      n.setAttribute("aria-pressed", "false");
+    });
+    item.classList.add("active");
+    item.setAttribute("aria-pressed", "true");
+    scrollToAnalystSection(item.dataset.nav);
+    document.querySelectorAll(".mobile-nav-tab").forEach(function(tab) {
+      const isMatch = tab.dataset.nav === item.dataset.nav;
+      tab.classList.toggle("active", isMatch);
+      tab.setAttribute("aria-selected", isMatch ? "true" : "false");
+    });
+  });
+  item.addEventListener("keydown", function(e) {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      item.click();
+    }
+  });
+});
+
+document.querySelectorAll(".mobile-nav-tab").forEach(function(tab) {
+  tab.addEventListener("click", function() {
+    const nav = document.querySelector('#sidebarNav .nav-item[data-nav="' + tab.dataset.nav + '"]');
+    if (nav) nav.click();
+  });
+});
+
+function initCurrentUser() {
+  const nameEl = document.getElementById("currentUserName");
+  const roleEl = document.getElementById("currentUserRole");
+  if (nameEl) nameEl.textContent = CURRENT_USER.name;
+  if (roleEl) roleEl.textContent = CURRENT_USER.role;
+}
+
+window.addEventListener("resize", drawGlobalMap);
+
+initCurrentUser();
+generateHeatmapData();
+renderHeatmap("cisoHeatmap");
+renderHeatmap("analystHeatmap");
+renderAgentTable();
+renderIncidentStream();
+renderUrgentCare("urgentCareMatrix");
+renderUrgentCare("analystUrgentCare");
+renderAuditLog();
+updateCounters();
+drawGlobalMap();
+updateClock();
+setInterval(updateClock, 1000);
+setInterval(function() {
+  const dot = document.querySelector(".pulse-dot");
+  if (dot) dot.style.background = Math.random() > 0.05 ? "var(--success)" : "var(--warning)";
+}, 3000);
+</script>
+</body>
+</html>
