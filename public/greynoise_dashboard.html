@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sycure GreyNoise Pulse | Internet Threat Telemetry</title>
+    <link rel="icon" href="hires2-removebg-preview.png" type="image/png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+        :root {
+            --bg-main: #f8fafc;
+            --card-bg: rgba(255, 255, 255, 0.9);
+            --text-primary: #1e293b;
+            --border-glass: rgba(226, 232, 240, 0.8);
+            --benign: #10b981;
+            --unknown: #f59e0b;
+            --malicious: #ef4444;
+            --riot: #3b82f6;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-primary);
+            overflow-x: hidden;
+        }
+
+        .glass-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid var(--border-glass);
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.08);
+        }
+
+        .intel-panel {
+            transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: translateX(100%);
+            z-index: 60;
+        }
+
+        .intel-panel.open {
+            transform: translateX(0);
+        }
+
+        .panel-backdrop {
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            z-index: 55;
+        }
+
+        .panel-backdrop.open {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .badge-benign {
+            background-color: #d1fae5;
+            color: #047857;
+            border: 1px solid #a7f3d0;
+        }
+
+        .badge-unknown {
+            background-color: #fef3c7;
+            color: #b45309;
+            border: 1px solid #fde68a;
+        }
+
+        .badge-malicious {
+            background-color: #fee2e2;
+            color: #b91c1c;
+            border: 1px solid #fecaca;
+        }
+
+        .tag-noise-true {
+            background-color: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fde68a;
+        }
+
+        .tag-noise-false {
+            background-color: #f1f5f9;
+            color: #64748b;
+            border: 1px solid #e2e8f0;
+        }
+
+        .tag-riot-true {
+            background-color: #dbeafe;
+            color: #1d4ed8;
+            border: 1px solid #bfdbfe;
+        }
+
+        .tag-riot-false {
+            background-color: #f1f5f9;
+            color: #64748b;
+            border: 1px solid #e2e8f0;
+        }
+
+        .row-benign:hover td { background-color: #ecfdf5 !important; }
+        .row-unknown:hover td { background-color: #fffbeb !important; }
+        .row-malicious:hover td { background-color: #fef2f2 !important; }
+
+        .row-benign td { border-left: 3px solid var(--benign); }
+        .row-unknown td { border-left: 3px solid var(--unknown); }
+        .row-malicious td { border-left: 3px solid var(--malicious); }
+
+        .status-dot {
+            height: 8px;
+            width: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .kpi-malicious { border-left: 4px solid var(--malicious); }
+        .kpi-riot { border-left: 4px solid var(--riot); }
+        .kpi-noise { border-left: 4px solid var(--unknown); }
+        .kpi-ratio { border-left: 4px solid #6366f1; }
+
+        .data-table th {
+            text-align: left;
+            padding: 10px 14px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #64748b;
+            border-bottom: 1px solid #e2e8f0;
+            background: #f8fafc;
+        }
+
+        .data-table td {
+            padding: 12px 14px;
+            font-size: 13px;
+            border-bottom: 1px solid #f1f5f9;
+            vertical-align: middle;
+        }
+
+        .data-table tr { cursor: pointer; transition: background-color 0.15s ease; }
+
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid #e2e8f0;
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        .brand-logo {
+            width: 38px;
+            height: 38px;
+            object-fit: contain;
+            flex-shrink: 0;
+            display: block;
+        }
+
+        .brand-mark {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <!-- Header Control Bar -->
+    <header class="sticky top-0 z-40 w-full glass-card border-b">
+        <div class="max-w-screen-2xl mx-auto px-3 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-2">
+            <div class="brand-mark min-w-0">
+                <img src="hires2-removebg-preview.png" alt="Sycure" class="brand-logo" width="38" height="38">
+                <div class="min-w-0">
+                    <h1 class="text-sm sm:text-base font-bold leading-tight truncate">Sycure GreyNoise Pulse</h1>
+                    <p class="hidden sm:block text-xs text-slate-500">GreyNoise Community API | Internet Background Noise Telemetry</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3 lg:gap-5 shrink-0">
+                <div class="hidden sm:flex flex-col items-end text-xs font-medium text-slate-600">
+                    <div class="flex items-center gap-2">
+                        <span id="connectionStatus" class="status-dot bg-amber-500 animate-pulse"></span>
+                        <span id="connectionLabel">SIMULATION MODE</span>
+                    </div>
+                    <span id="lastSyncLabel" class="text-[10px] text-slate-400 font-mono mt-0.5 hidden">Last sync: —</span>
+                </div>
+                <div id="utcClock" class="font-mono text-xs lg:text-sm bg-slate-800 text-white px-3 py-1.5 rounded whitespace-nowrap">--:--:-- UTC</div>
+                <div class="flex items-center gap-2">
+                    <label for="apiKeyInput" class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider hidden md:inline">API Key</label>
+                    <input
+                        type="password"
+                        id="apiKeyInput"
+                        placeholder="GreyNoise API key"
+                        autocomplete="off"
+                        class="w-32 sm:w-40 lg:w-52 text-xs px-3 py-1.5 rounded-lg border border-slate-200 bg-white/80 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent font-mono"
+                    />
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-screen-2xl mx-auto p-4 lg:p-6 space-y-6">
+
+        <!-- Strategic Threat Mix Band -->
+        <section id="kpiBand" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="glass-card p-5 rounded-xl kpi-noise">
+                <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Internet Noise Indicators</p>
+                <div class="flex items-end justify-between mt-2">
+                    <span id="kpiTotalNoise" class="text-4xl font-bold text-slate-800">0</span>
+                    <span class="text-[10px] text-slate-400 font-medium">Logged entries</span>
+                </div>
+                <p class="text-[10px] text-slate-400 mt-2">IPs observed scanning GreyNoise sensors</p>
+            </div>
+
+            <div class="glass-card p-5 rounded-xl kpi-malicious">
+                <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Active Malicious Scanners</p>
+                <div class="flex items-end justify-between mt-2">
+                    <span id="kpiMalicious" class="text-4xl font-bold text-red-600">0</span>
+                    <span class="text-red-500 text-sm font-bold">▲ Threat</span>
+                </div>
+                <p class="text-[10px] text-slate-400 mt-2">Classification: malicious</p>
+            </div>
+
+            <div class="glass-card p-5 rounded-xl kpi-riot">
+                <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">RIOT Verified Services</p>
+                <div class="flex items-end justify-between mt-2">
+                    <span id="kpiRiot" class="text-4xl font-bold text-blue-600">0</span>
+                    <span class="text-emerald-600 text-sm font-bold">Safe CDN</span>
+                </div>
+                <p class="text-[10px] text-slate-400 mt-2">Verified public infrastructure nodes</p>
+            </div>
+
+            <div class="glass-card p-5 rounded-xl kpi-ratio">
+                <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Current Noise Ratio</p>
+                <div class="flex items-end justify-between mt-2">
+                    <span id="kpiNoiseRatio" class="text-4xl font-bold text-slate-800">0<span class="text-lg text-slate-400">%</span></span>
+                    <span id="kpiNoiseFraction" class="text-[10px] text-slate-400 font-mono">0/0</span>
+                </div>
+                <p class="text-[10px] text-slate-400 mt-2">noise=true ÷ total indicators</p>
+            </div>
+        </section>
+
+        <!-- Ingestion Controls -->
+        <section class="glass-card rounded-xl p-4 lg:p-5">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div>
+                    <h2 class="font-bold text-sm text-slate-700">Scanned IP Ingestion Grid</h2>
+                    <p class="text-[10px] text-slate-500 mt-0.5">Lookup IPv4 addresses via GreyNoise Community API or simulation engine</p>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <input
+                        type="text"
+                        id="ipLookupInput"
+                        placeholder="e.g. 8.8.8.8"
+                        class="text-sm px-3 py-2 rounded-lg border border-slate-200 bg-white w-40 font-mono focus:outline-none focus:ring-2 focus:ring-slate-400"
+                    />
+                    <button
+                        id="btnLookup"
+                        class="px-4 py-2 text-sm font-semibold rounded-lg bg-slate-900 text-white hover:bg-slate-800 transition-colors flex items-center gap-2"
+                    >
+                        <span id="lookupSpinner" class="spinner hidden"></span>
+                        <span>Lookup IP</span>
+                    </button>
+                    <select id="classificationFilterSelect" class="text-sm px-3 py-2 rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-slate-400">
+                        <option value="All">All Classifications</option>
+                        <option value="benign">Benign</option>
+                        <option value="unknown">Unknown</option>
+                        <option value="malicious">Malicious</option>
+                    </select>
+                    <select id="noiseFilterSelect" class="text-sm px-3 py-2 rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-slate-400">
+                        <option value="All">All Noise States</option>
+                        <option value="True">Noise: True</option>
+                        <option value="False">Noise: False</option>
+                    </select>
+                    <button id="btnRefreshAll" class="px-3 py-2 text-sm font-medium rounded-lg border border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors hidden">
+                        ↻ Refresh Live Data
+                    </button>
+                    <button id="btnSimulate" class="px-3 py-2 text-sm font-medium rounded-lg border border-slate-200 bg-white hover:bg-slate-50 transition-colors">
+                        + Simulate Event
+                    </button>
+                    <button id="btnClear" class="px-3 py-2 text-sm font-medium rounded-lg border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 transition-colors">
+                        Clear All
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Data Table -->
+        <section class="glass-card rounded-xl overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="data-table w-full">
+                    <thead>
+                        <tr>
+                            <th>Source IP</th>
+                            <th>Actor / Scanner Name</th>
+                            <th>Classification</th>
+                            <th>Noise</th>
+                            <th>RIOT</th>
+                            <th>Last Observed</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="scannedIpTableBody">
+                        <tr id="emptyStateRow">
+                            <td colspan="7" class="text-center text-slate-400 py-12 text-sm">
+                                No telemetry logged. Enter an IP to lookup or click "Simulate Event" to seed mock data.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Panel Backdrop -->
+    <div id="panelBackdrop" class="panel-backdrop fixed inset-0 bg-slate-900/30 backdrop-blur-sm"></div>
+
+    <!-- Intel Side Panel -->
+    <aside id="intelPanel" class="intel-panel fixed top-0 right-0 h-full w-full sm:w-[420px] lg:w-[480px] glass-card border-l shadow-2xl flex flex-col">
+        <div class="p-5 border-b bg-slate-50/60 flex items-start justify-between gap-3">
+            <div class="min-w-0">
+                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Threat Intel Drill-Down</p>
+                <h2 id="panelIp" class="text-xl font-bold font-mono text-slate-900 truncate">—</h2>
+                <span id="panelClassification" class="inline-block mt-2 px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest border badge-unknown">unknown</span>
+            </div>
+            <button id="btnClosePanel" class="shrink-0 w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 flex items-center justify-center text-slate-500 transition-colors" aria-label="Close panel">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-5 space-y-5">
+            <!-- Mass Scanner vs Targeted Attack Block -->
+            <div id="validationBlock" class="rounded-xl p-4 border">
+                <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Mass Scanner vs. Targeted Attack</h3>
+                <p id="validationConclusion" class="text-sm text-slate-700 leading-relaxed">—</p>
+            </div>
+
+            <!-- Field Details -->
+            <div class="space-y-3">
+                <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider">Community API Fields</h3>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                        <p class="text-[10px] text-slate-500 font-semibold uppercase">noise</p>
+                        <p id="panelNoise" class="text-sm font-bold mt-0.5 font-mono">—</p>
+                    </div>
+                    <div class="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                        <p class="text-[10px] text-slate-500 font-semibold uppercase">riot</p>
+                        <p id="panelRiot" class="text-sm font-bold mt-0.5 font-mono">—</p>
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                    <p class="text-[10px] text-slate-500 font-semibold uppercase">name</p>
+                    <p id="panelName" class="text-sm font-semibold mt-0.5 text-slate-800">—</p>
+                </div>
+
+                <div class="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                    <p class="text-[10px] text-slate-500 font-semibold uppercase">last_seen</p>
+                    <p id="panelLastSeen" class="text-sm font-mono mt-0.5 text-slate-800">—</p>
+                </div>
+
+                <div class="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                    <p class="text-[10px] text-slate-500 font-semibold uppercase">link</p>
+                    <p id="panelLinkPreview" class="text-xs font-mono mt-0.5 text-slate-500 break-all">—</p>
+                </div>
+            </div>
+
+            <a
+                id="panelVisualizerLink"
+                href="#"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="block w-full text-center px-4 py-3 rounded-xl bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 transition-colors"
+            >
+                Open GreyNoise Visualizer →
+            </a>
+        </div>
+    </aside>
+
+    <script>
+        const STORAGE_KEY = 'greynoise_api_key';
+        const TELEMETRY_KEY = 'greynoise_telemetry_cache';
+        const API_KEY_FILE = 'Greynoise API.txt';
+        const BOOTSTRAP_API_KEY = '98f5194a-4acb-4918-a984-2b6ece80840c';
+        const GREYNOISE_DIRECT_API = 'https://api.greynoise.io/v3/community';
+        const CORS_GATEWAY_PROXY = 'https://cors-anywhere.herokuapp.com/';
+        const LIVE_REFRESH_MS = 45000;
+
+        let telemetryStore = [];
+        let simulationInterval = null;
+        let liveRefreshInterval = null;
+        let activeApiKey = '';
+        let currentlyOpenIp = null;
+        let isSyncing = false;
+
+        const MOCK_IP_PROFILES = {
+            '8.8.8.8': {
+                name: 'Google Public DNS',
+                classification: 'benign',
+                noise: false,
+                riot: true
+            },
+            '185.220.101.1': {
+                name: 'Tor Exit Node',
+                classification: 'malicious',
+                noise: true,
+                riot: false
+            }
+        };
+
+        const MOCK_ACTORS = [
+            { name: 'Shodan.io', classification: 'benign', noise: true, riot: false },
+            { name: 'Censys Scanner', classification: 'benign', noise: true, riot: false },
+            { name: 'Tor Exit Node', classification: 'malicious', noise: true, riot: false },
+            { name: 'Googlebot', classification: 'benign', noise: false, riot: true },
+            { name: 'Google Public DNS', classification: 'benign', noise: false, riot: true },
+            { name: 'Cloudflare CDN', classification: 'benign', noise: false, riot: true },
+            { name: 'Mass Scanner Infrastructure', classification: 'unknown', noise: true, riot: false },
+            { name: 'Masscan Botnet', classification: 'malicious', noise: true, riot: false },
+            { name: 'Unknown Scanner', classification: 'unknown', noise: true, riot: false },
+            { name: 'Mirai Variant', classification: 'malicious', noise: true, riot: false },
+            { name: 'Microsoft Azure', classification: 'benign', noise: false, riot: true },
+            { name: 'Zoom Video Communications', classification: 'benign', noise: false, riot: true },
+            { name: 'Reconnaissance Probe', classification: 'unknown', noise: true, riot: false }
+        ];
+
+        const LIVE_SEED_IPS = [
+            '66.240.205.34', '8.8.8.8', '1.1.1.1', '185.220.101.1',
+            '54.36.149.1', '104.16.132.229', '203.0.113.42', '198.51.100.77'
+        ];
+
+        function randomIPv4() {
+            return Array.from({ length: 4 }, () => Math.floor(Math.random() * 254) + 1).join('.');
+        }
+
+        function randomPastDate(daysBack = 90) {
+            const d = new Date();
+            d.setDate(d.getDate() - Math.floor(Math.random() * daysBack));
+            return d.toISOString().split('T')[0];
+        }
+
+        function buildVisualizerLink(ip, riot) {
+            return riot
+                ? `https://viz.greynoise.io/riot/${ip}`
+                : `https://viz.greynoise.io/ip/${ip}`;
+        }
+
+        function coerceApiBoolean(value) {
+            if (value === true || value === 'true' || value === 'True') return true;
+            if (value === false || value === 'false' || value === 'False') return false;
+            return Boolean(value);
+        }
+
+        function resolveMockProfile(ip) {
+            return MOCK_IP_PROFILES[ip] || null;
+        }
+
+        function normalizeGreyNoiseRecord(raw) {
+            const ip = String(raw.ip || '');
+            const riot = coerceApiBoolean(raw.riot);
+            let classification = raw.classification;
+            if (!['benign', 'malicious', 'unknown'].includes(classification)) {
+                classification = 'unknown';
+            }
+
+            let name = raw.name;
+            if (!name && raw.message && raw.message !== 'Success') {
+                name = raw.message;
+            }
+            if (!name) {
+                name = riot ? 'RIOT Verified Service' : (raw.noise ? 'Unidentified Scanner' : 'Not Observed');
+            }
+
+            return {
+                ip,
+                noise: coerceApiBoolean(raw.noise),
+                riot,
+                classification,
+                name,
+                last_seen: raw.last_seen || new Date().toISOString().split('T')[0],
+                link: raw.link || buildVisualizerLink(ip, riot),
+                message: raw.message || 'Success',
+                source: 'live'
+            };
+        }
+
+        function generateMockGreyNoiseEvent(overrideIp) {
+            const ip = overrideIp || randomIPv4();
+            const profile = resolveMockProfile(ip)
+                || MOCK_ACTORS[Math.floor(Math.random() * MOCK_ACTORS.length)];
+
+            return normalizeGreyNoiseRecord({
+                ip,
+                noise: profile.noise,
+                riot: profile.riot,
+                classification: profile.classification,
+                name: profile.name,
+                last_seen: randomPastDate(),
+                link: buildVisualizerLink(ip, profile.riot),
+                source: 'mock'
+            });
+        }
+
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        async function loadApiKeyFromFile() {
+            try {
+                const response = await fetch(API_KEY_FILE, { cache: 'no-store' });
+                if (response.ok) {
+                    const text = (await response.text()).trim();
+                    if (text) return text;
+                }
+            } catch (_) {
+                /* file:// or missing file — fall through to bootstrap key */
+            }
+            return BOOTSTRAP_API_KEY;
+        }
+
+        function isLocalDeploymentContext() {
+            return window.location.hostname === 'localhost'
+                || window.location.hostname === '127.0.0.1'
+                || window.location.protocol === 'file:';
+        }
+
+        function buildGreyNoiseEndpoint(ip) {
+            const targetUrl = `${GREYNOISE_DIRECT_API}/${ip}`;
+            return isLocalDeploymentContext()
+                ? `${CORS_GATEWAY_PROXY}${targetUrl}`
+                : targetUrl;
+        }
+
+        function renderThreatIntelPanel(telemetryPayload) {
+            const record = (telemetryPayload && telemetryPayload.ip && telemetryPayload.classification !== undefined)
+                ? (telemetryPayload.source ? telemetryPayload : normalizeGreyNoiseRecord(telemetryPayload))
+                : null;
+
+            if (record && currentlyOpenIp === record.ip) {
+                populateIntelPanel(record);
+            }
+        }
+
+        function updateUiWithMockData(ip) {
+            const fallbackContext = generateMockGreyNoiseEvent(ip);
+            fallbackContext.source = 'mock';
+            renderThreatIntelPanel(fallbackContext);
+            return fallbackContext;
+        }
+
+        async function initializeApiKey() {
+            const fileKey = await loadApiKeyFromFile();
+            const input = document.getElementById('apiKeyInput');
+            activeApiKey = fileKey || localStorage.getItem(STORAGE_KEY) || '';
+            input.value = activeApiKey;
+            if (activeApiKey) {
+                localStorage.setItem(STORAGE_KEY, activeApiKey);
+            }
+            updateConnectionStatus();
+            toggleLiveControls();
+        }
+
+        async function fetchGreyNoiseData(ip) {
+            const sanitizedIp = ip.trim();
+
+            if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(sanitizedIp)) {
+                throw new Error('Invalid IPv4 address format.');
+            }
+
+            const apiKey = document.getElementById('apiKeyInput')?.value?.trim()
+                || localStorage.getItem(STORAGE_KEY)
+                || activeApiKey
+                || '';
+
+            const targetUrl = `${GREYNOISE_DIRECT_API}/${sanitizedIp}`;
+            const isLocal = isLocalDeploymentContext();
+            const finalizedApiEndpoint = isLocal
+                ? `${CORS_GATEWAY_PROXY}${targetUrl}`
+                : targetUrl;
+
+            if (!apiKey) {
+                console.warn('No API Key detected. Engaging local fallback telemetry generator engine.');
+                return updateUiWithMockData(sanitizedIp);
+            }
+
+            activeApiKey = apiKey;
+
+            try {
+                const response = await fetch(finalizedApiEndpoint, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'key': apiKey
+                    }
+                });
+
+                const telemetryPayload = await response.json().catch(() => null);
+
+                if (telemetryPayload && telemetryPayload.ip) {
+                    const record = normalizeGreyNoiseRecord(telemetryPayload);
+                    renderThreatIntelPanel(record);
+                    return record;
+                }
+
+                if (!response.ok) {
+                    throw new Error(`GreyNoise API communication fault. Status: ${response.status}`);
+                }
+
+                throw new Error(telemetryPayload?.message || 'No IP data returned from GreyNoise.');
+
+            } catch (error) {
+                console.error('CORS Pipeline Exception Handled:', error);
+                return updateUiWithMockData(sanitizedIp);
+            }
+        }
+
+        function getApiKeyActive() {
+            return activeApiKey.trim().length > 0
+                || Boolean(document.getElementById('apiKeyInput')?.value?.trim())
+                || Boolean(localStorage.getItem(STORAGE_KEY));
+        }
+
+        function toggleLiveControls() {
+            const live = getApiKeyActive();
+            document.getElementById('btnRefreshAll').classList.toggle('hidden', !live);
+            document.getElementById('btnSimulate').classList.toggle('hidden', live);
+            document.getElementById('lastSyncLabel').classList.toggle('hidden', !live);
+        }
+
+        function setSyncStatus(state, detail) {
+            const label = document.getElementById('lastSyncLabel');
+            if (!getApiKeyActive()) {
+                label.classList.add('hidden');
+                return;
+            }
+            label.classList.remove('hidden');
+            if (state === 'syncing') {
+                label.textContent = 'Syncing live telemetry...';
+                label.className = 'text-[10px] text-amber-600 font-mono mt-0.5';
+            } else if (state === 'synced') {
+                const ts = new Date().toISOString().replace('T', ' ').slice(0, 19);
+                label.textContent = `Last sync: ${ts} UTC`;
+                label.className = 'text-[10px] text-emerald-600 font-mono mt-0.5';
+            } else if (state === 'error') {
+                label.textContent = detail || 'Sync failed';
+                label.className = 'text-[10px] text-red-600 font-mono mt-0.5';
+            }
+        }
+
+        function updateConnectionStatus() {
+            const dot = document.getElementById('connectionStatus');
+            const label = document.getElementById('connectionLabel');
+            if (getApiKeyActive()) {
+                dot.className = 'status-dot bg-emerald-500 animate-pulse';
+                label.textContent = 'LIVE API';
+            } else {
+                dot.className = 'status-dot bg-amber-500 animate-pulse';
+                label.textContent = 'SIMULATION MODE';
+            }
+        }
+
+        function saveApiKey(key) {
+            activeApiKey = key;
+            if (key) {
+                localStorage.setItem(STORAGE_KEY, key);
+            } else {
+                localStorage.removeItem(STORAGE_KEY);
+            }
+            updateConnectionStatus();
+            toggleLiveControls();
+            if (getApiKeyActive()) {
+                stopSimulationEngine();
+                startLiveRefreshEngine();
+                refreshAllTelemetry();
+            } else {
+                stopLiveRefreshEngine();
+                startSimulationEngine();
+            }
+        }
+
+        function persistTelemetry() {
+            try {
+                localStorage.setItem(TELEMETRY_KEY, JSON.stringify(telemetryStore));
+            } catch (_) { /* quota exceeded — continue in-memory */ }
+        }
+
+        function loadTelemetry() {
+            try {
+                const cached = localStorage.getItem(TELEMETRY_KEY);
+                if (cached) {
+                    const parsed = JSON.parse(cached);
+                    if (Array.isArray(parsed)) {
+                        telemetryStore = parsed.map(item => ({
+                            ...normalizeGreyNoiseRecord(item),
+                            source: item.source || 'live'
+                        }));
+                    }
+                }
+            } catch (_) {
+                telemetryStore = [];
+            }
+        }
+
+        function upsertRecord(record) {
+            const idx = telemetryStore.findIndex(r => r.ip === record.ip);
+            if (idx >= 0) {
+                telemetryStore[idx] = record;
+            } else {
+                telemetryStore.unshift(record);
+            }
+            persistTelemetry();
+            if (currentlyOpenIp === record.ip) {
+                populateIntelPanel(record);
+            }
+        }
+
+        function refreshOpenPanelIfNeeded() {
+            if (!currentlyOpenIp) return;
+            const record = telemetryStore.find(r => r.ip === currentlyOpenIp);
+            if (record) populateIntelPanel(record);
+        }
+
+        function classificationBadge(cls) {
+            const map = {
+                benign: 'badge-benign',
+                unknown: 'badge-unknown',
+                malicious: 'badge-malicious'
+            };
+            return `<span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${map[cls] || map.unknown}">${cls}</span>`;
+        }
+
+        function boolTag(value, trueClass, falseClass, trueLabel, falseLabel) {
+            return value
+                ? `<span class="inline-block px-2 py-0.5 rounded text-[10px] font-semibold ${trueClass}">${trueLabel}</span>`
+                : `<span class="inline-block px-2 py-0.5 rounded text-[10px] font-semibold ${falseClass}">${falseLabel}</span>`;
+        }
+
+        function formatLastSeen(dateStr) {
+            if (!dateStr) return '—';
+            const d = new Date(dateStr);
+            if (isNaN(d.getTime())) return dateStr;
+            return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+        }
+
+        function updateSummaryCards(filteredRows) {
+            const total = filteredRows.length;
+            const noiseCount = filteredRows.filter(r => r.noise === true).length;
+            const maliciousCount = filteredRows.filter(r => r.classification === 'malicious').length;
+            const riotCount = filteredRows.filter(r => r.riot === true).length;
+            const ratio = total > 0 ? Math.round((noiseCount / total) * 100) : 0;
+
+            document.getElementById('kpiTotalNoise').textContent = String(total);
+            document.getElementById('kpiMalicious').textContent = String(maliciousCount).padStart(2, '0');
+            document.getElementById('kpiRiot').textContent = String(riotCount).padStart(2, '0');
+            document.getElementById('kpiNoiseRatio').innerHTML = `${ratio}<span class="text-lg text-slate-400">%</span>`;
+            document.getElementById('kpiNoiseFraction').textContent = `${noiseCount}/${total}`;
+        }
+
+        function renderTableRows(filteredRows) {
+            const targetTableBody = document.getElementById('scannedIpTableBody');
+            if (!targetTableBody) return;
+
+            if (filteredRows.length === 0) {
+                targetTableBody.innerHTML = `
+                    <tr id="emptyStateRow">
+                        <td colspan="7" class="text-center text-slate-400 py-12 text-sm">
+                            ${telemetryStore.length === 0
+                                ? 'No telemetry logged. Enter an IP to lookup or click "Simulate Event" to seed mock data.'
+                                : 'No records match the current filters.'}
+                        </td>
+                    </tr>`;
+                return;
+            }
+
+            targetTableBody.innerHTML = filteredRows.map(record => `
+                <tr class="row-${record.classification}" data-ip="${record.ip}" onclick="openIntelPanel('${record.ip}')">
+                    <td class="font-mono font-semibold text-slate-800">${record.ip}</td>
+                    <td class="text-slate-700">${escapeHtml(record.name)}</td>
+                    <td>${classificationBadge(record.classification)}</td>
+                    <td>${boolTag(record.noise === true, 'tag-noise-true', 'tag-noise-false', 'NOISE', 'CLEAR')}</td>
+                    <td>${boolTag(record.riot === true, 'tag-riot-true', 'tag-riot-false', 'RIOT', '—')}</td>
+                    <td class="text-slate-600 text-xs font-mono">${formatLastSeen(record.last_seen)}</td>
+                    <td>
+                        <button
+                            class="text-xs font-semibold text-blue-600 hover:text-blue-800 underline underline-offset-2"
+                            onclick="event.stopPropagation(); openIntelPanel('${record.ip}')"
+                        >Drill Down</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function updateTableDisplay() {
+            const classFilter = document.getElementById('classificationFilterSelect')?.value || 'All';
+            const noiseFilter = document.getElementById('noiseFilterSelect')?.value || 'All';
+            const targetTableBody = document.getElementById('scannedIpTableBody');
+            if (!targetTableBody) return;
+
+            const filteredRows = telemetryStore.filter(item => {
+                const matchesClass = classFilter === 'All'
+                    || item.classification.toLowerCase() === classFilter.toLowerCase();
+
+                let matchesNoise = true;
+                if (noiseFilter === 'True') {
+                    matchesNoise = item.noise === true;
+                } else if (noiseFilter === 'False') {
+                    matchesNoise = item.noise === false;
+                }
+
+                return matchesClass && matchesNoise;
+            });
+
+            renderTableRows(filteredRows);
+            updateSummaryCards(filteredRows);
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function buildThreatConclusion(record) {
+            const { noise, riot, classification } = record;
+
+            if (riot && !noise) {
+                return 'This IP is a RIOT-verified component of known public infrastructure (CDN, DNS, or SaaS provider). It is not associated with internet background noise scanning and is unlikely to represent a targeted threat against your enterprise.';
+            }
+
+            if (riot && noise) {
+                return 'This IP is RIOT-verified but has also been observed generating internet background noise. While the actor is a known entity, its scanning behavior is part of mass-reconnaissance activity — not a targeted attack against your organization specifically.';
+            }
+
+            if (noise && classification === 'malicious') {
+                return 'This IP is a verified component of mass-scanning background noise with a malicious classification. It is actively probing internet-facing assets at scale and is not targeting your enterprise specifically, but should be monitored and blocked at the perimeter.';
+            }
+
+            if (noise && classification === 'benign') {
+                return 'This IP is a verified component of mass-scanning background noise (e.g., internet-wide research scanners). It is not targeting your enterprise specifically. Benign classification indicates no known malicious intent.';
+            }
+
+            if (noise && classification === 'unknown') {
+                return 'This IP has been observed as part of internet background noise scanning, but its intent has not been definitively classified. Treat with caution — it may be reconnaissance preceding a targeted campaign.';
+            }
+
+            if (!noise && !riot) {
+                return 'This IP has not been observed in the GreyNoise sensor network and is not part of the RIOT verified dataset. Absence of noise data does not confirm safety — this may indicate a targeted, low-volume attacker operating below mass-scan thresholds.';
+            }
+
+            return 'Insufficient telemetry to determine mass-scan vs. targeted attack posture. Recommend additional enrichment and correlation with internal log sources.';
+        }
+
+        function getValidationBlockStyle(classification) {
+            const styles = {
+                benign: 'bg-emerald-50 border-emerald-200',
+                unknown: 'bg-amber-50 border-amber-200',
+                malicious: 'bg-red-50 border-red-200'
+            };
+            return styles[classification] || styles.unknown;
+        }
+
+        function getClassificationBadgeClass(classification) {
+            const map = {
+                benign: 'badge-benign',
+                unknown: 'badge-unknown',
+                malicious: 'badge-malicious'
+            };
+            return map[classification] || map.unknown;
+        }
+
+        function populateIntelPanel(record) {
+            document.getElementById('panelIp').textContent = record.ip;
+
+            const clsEl = document.getElementById('panelClassification');
+            clsEl.textContent = record.classification;
+            clsEl.className = `inline-block mt-2 px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest border ${getClassificationBadgeClass(record.classification)}`;
+
+            document.getElementById('panelNoise').textContent = String(record.noise);
+            document.getElementById('panelRiot').textContent = String(record.riot);
+            document.getElementById('panelName').textContent = record.name;
+            document.getElementById('panelLastSeen').textContent = record.last_seen;
+            document.getElementById('panelLinkPreview').textContent = record.link;
+
+            document.getElementById('panelVisualizerLink').href = record.link;
+
+            const validationBlock = document.getElementById('validationBlock');
+            validationBlock.className = `rounded-xl p-4 border ${getValidationBlockStyle(record.classification)}`;
+            document.getElementById('validationConclusion').textContent = buildThreatConclusion(record);
+        }
+
+        function openIntelPanel(ip) {
+            const record = telemetryStore.find(r => r.ip === ip);
+            if (!record) return;
+
+            currentlyOpenIp = ip;
+            populateIntelPanel(record);
+
+            document.getElementById('intelPanel').classList.add('open');
+            document.getElementById('panelBackdrop').classList.add('open');
+        }
+
+        function closeIntelPanel() {
+            currentlyOpenIp = null;
+            document.getElementById('intelPanel').classList.remove('open');
+            document.getElementById('panelBackdrop').classList.remove('open');
+        }
+
+        function setLookupLoading(loading) {
+            const spinner = document.getElementById('lookupSpinner');
+            const btn = document.getElementById('btnLookup');
+            if (loading) {
+                spinner.classList.remove('hidden');
+                btn.disabled = true;
+                btn.classList.add('opacity-70', 'cursor-not-allowed');
+            } else {
+                spinner.classList.add('hidden');
+                btn.disabled = false;
+                btn.classList.remove('opacity-70', 'cursor-not-allowed');
+            }
+        }
+
+        async function performLookup(ip) {
+            const targetIp = ip || document.getElementById('ipLookupInput').value.trim();
+            if (!targetIp) return;
+
+            setLookupLoading(true);
+            try {
+                const record = await fetchGreyNoiseData(targetIp);
+                upsertRecord(record);
+                updateTableDisplay();
+                document.getElementById('ipLookupInput').value = '';
+            } catch (err) {
+                alert(`Lookup failed: ${err.message}`);
+            } finally {
+                setLookupLoading(false);
+            }
+        }
+
+        function seedInitialData() {
+            if (telemetryStore.length > 0) return;
+
+            LIVE_SEED_IPS.forEach((ip, i) => {
+                const profile = resolveMockProfile(ip) || MOCK_ACTORS[i % MOCK_ACTORS.length];
+                upsertRecord(normalizeGreyNoiseRecord({
+                    ip,
+                    noise: profile.noise,
+                    riot: profile.riot,
+                    classification: profile.classification,
+                    name: profile.name,
+                    last_seen: randomPastDate(),
+                    link: buildVisualizerLink(ip, profile.riot),
+                    source: 'mock'
+                }));
+            });
+            updateTableDisplay();
+        }
+
+        async function ingestLiveIps(ips, options = {}) {
+            const { replaceStore = false } = options;
+            if (replaceStore) {
+                telemetryStore = [];
+            }
+
+            const uniqueIps = [...new Set(ips.map(ip => ip.trim()).filter(Boolean))];
+            for (const ip of uniqueIps) {
+                try {
+                    const record = await fetchGreyNoiseData(ip);
+                    upsertRecord(record);
+                    updateTableDisplay();
+                    await delay(300);
+                } catch (err) {
+                    console.warn(`GreyNoise lookup failed for ${ip}:`, err.message);
+                }
+            }
+        }
+
+        async function refreshAllTelemetry() {
+            if (!getApiKeyActive() || isSyncing) return;
+
+            isSyncing = true;
+            setSyncStatus('syncing');
+
+            try {
+                const trackedIps = telemetryStore.map(r => r.ip);
+                const ipsToRefresh = [...new Set([...LIVE_SEED_IPS, ...trackedIps])];
+                await ingestLiveIps(ipsToRefresh);
+                setSyncStatus('synced');
+            } catch (err) {
+                setSyncStatus('error', err.message);
+            } finally {
+                isSyncing = false;
+            }
+        }
+
+        function storeNeedsLiveBootstrap() {
+            if (telemetryStore.length === 0) return true;
+            return telemetryStore.every(r => r.source !== 'live');
+        }
+
+        async function bootstrapLiveTelemetry() {
+            setSyncStatus('syncing');
+            if (storeNeedsLiveBootstrap()) {
+                await ingestLiveIps(LIVE_SEED_IPS, { replaceStore: true });
+            } else {
+                await refreshAllTelemetry();
+            }
+            setSyncStatus('synced');
+        }
+
+        function stopSimulationEngine() {
+            if (simulationInterval) {
+                clearInterval(simulationInterval);
+                simulationInterval = null;
+            }
+        }
+
+        function startSimulationEngine() {
+            stopSimulationEngine();
+            simulationInterval = setInterval(() => {
+                if (getApiKeyActive()) return;
+                const event = generateMockGreyNoiseEvent();
+                upsertRecord(event);
+                updateTableDisplay();
+            }, 12000);
+        }
+
+        function stopLiveRefreshEngine() {
+            if (liveRefreshInterval) {
+                clearInterval(liveRefreshInterval);
+                liveRefreshInterval = null;
+            }
+        }
+
+        function startLiveRefreshEngine() {
+            stopLiveRefreshEngine();
+            if (!getApiKeyActive()) return;
+
+            liveRefreshInterval = setInterval(() => {
+                refreshAllTelemetry();
+            }, LIVE_REFRESH_MS);
+        }
+
+        function initClock() {
+            function tick() {
+                const now = new Date();
+                const h = String(now.getUTCHours()).padStart(2, '0');
+                const m = String(now.getUTCMinutes()).padStart(2, '0');
+                const s = String(now.getUTCSeconds()).padStart(2, '0');
+                document.getElementById('utcClock').textContent = `${h}:${m}:${s} UTC`;
+            }
+            tick();
+            setInterval(tick, 1000);
+        }
+
+        function initEventListeners() {
+            const apiKeyInput = document.getElementById('apiKeyInput');
+
+            apiKeyInput.addEventListener('input', (e) => {
+                saveApiKey(e.target.value.trim());
+            });
+
+            document.getElementById('btnRefreshAll').addEventListener('click', () => refreshAllTelemetry());
+            document.getElementById('btnLookup').addEventListener('click', () => performLookup());
+            document.getElementById('ipLookupInput').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') performLookup();
+            });
+
+            document.getElementById('btnSimulate').addEventListener('click', () => {
+                const event = generateMockGreyNoiseEvent();
+                upsertRecord(event);
+                updateTableDisplay();
+            });
+
+            document.getElementById('btnClear').addEventListener('click', () => {
+                if (!confirm('Clear all logged telemetry?')) return;
+                telemetryStore = [];
+                persistTelemetry();
+                updateTableDisplay();
+            });
+
+            document.getElementById('classificationFilterSelect').addEventListener('change', updateTableDisplay);
+            document.getElementById('noiseFilterSelect').addEventListener('change', updateTableDisplay);
+
+            document.getElementById('btnClosePanel').addEventListener('click', closeIntelPanel);
+            document.getElementById('panelBackdrop').addEventListener('click', closeIntelPanel);
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') closeIntelPanel();
+            });
+        }
+
+        async function init() {
+            loadTelemetry();
+            initClock();
+            initEventListeners();
+            await initializeApiKey();
+
+            if (getApiKeyActive()) {
+                stopSimulationEngine();
+                await bootstrapLiveTelemetry();
+                startLiveRefreshEngine();
+            } else {
+                seedInitialData();
+                startSimulationEngine();
+            }
+
+            updateTableDisplay();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            init().catch(err => {
+                console.error('Dashboard init failed:', err);
+                setSyncStatus('error', err.message);
+            });
+        });
+    </script>
+</body>
+</html>
