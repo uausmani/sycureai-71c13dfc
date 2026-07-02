@@ -185,24 +185,8 @@
             </div>
 
             <div class="flex items-center gap-3 lg:gap-5 shrink-0">
-                <div class="hidden sm:flex flex-col items-end text-xs font-medium text-slate-600">
-                    <div class="flex items-center gap-2">
-                        <span id="connectionStatus" class="status-dot bg-amber-500 animate-pulse"></span>
-                        <span id="connectionLabel">SIMULATION MODE</span>
-                    </div>
-                    <span id="lastSyncLabel" class="text-[10px] text-slate-400 font-mono mt-0.5 hidden">Last sync: —</span>
-                </div>
+                <span id="lastSyncLabel" class="hidden sm:inline text-[10px] text-slate-400 font-mono">Last sync: —</span>
                 <div id="utcClock" class="font-mono text-xs lg:text-sm bg-slate-800 text-white px-3 py-1.5 rounded whitespace-nowrap">--:--:-- UTC</div>
-                <div class="flex items-center gap-2">
-                    <label for="apiKeyInput" class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider hidden md:inline">API Key</label>
-                    <input
-                        type="password"
-                        id="apiKeyInput"
-                        placeholder="GreyNoise API key"
-                        autocomplete="off"
-                        class="w-32 sm:w-40 lg:w-52 text-xs px-3 py-1.5 rounded-lg border border-slate-200 bg-white/80 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent font-mono"
-                    />
-                </div>
             </div>
         </div>
     </header>
@@ -253,7 +237,7 @@
             <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <div>
                     <h2 class="font-bold text-sm text-slate-700">Scanned IP Ingestion Grid</h2>
-                    <p class="text-[10px] text-slate-500 mt-0.5">Lookup IPv4 addresses via GreyNoise Community API or simulation engine</p>
+                    <p class="text-[10px] text-slate-500 mt-0.5">Lookup IPv4 addresses via the secure GreyNoise Community API proxy</p>
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
                     <input
@@ -280,11 +264,8 @@
                         <option value="True">Noise: True</option>
                         <option value="False">Noise: False</option>
                     </select>
-                    <button id="btnRefreshAll" class="px-3 py-2 text-sm font-medium rounded-lg border border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors hidden">
+                    <button id="btnRefreshAll" class="px-3 py-2 text-sm font-medium rounded-lg border border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors">
                         ↻ Refresh Live Data
-                    </button>
-                    <button id="btnSimulate" class="px-3 py-2 text-sm font-medium rounded-lg border border-slate-200 bg-white hover:bg-slate-50 transition-colors">
-                        + Simulate Event
                     </button>
                     <button id="btnClear" class="px-3 py-2 text-sm font-medium rounded-lg border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 transition-colors">
                         Clear All
@@ -311,7 +292,7 @@
                     <tbody id="scannedIpTableBody">
                         <tr id="emptyStateRow">
                             <td colspan="7" class="text-center text-slate-400 py-12 text-sm">
-                                No telemetry logged. Enter an IP to lookup or click "Simulate Event" to seed mock data.
+                                No telemetry logged. Enter an IP to lookup or wait for live data to load.
                             </td>
                         </tr>
                     </tbody>
@@ -388,66 +369,19 @@
     </aside>
 
     <script>
-        const STORAGE_KEY = 'greynoise_api_key';
         const TELEMETRY_KEY = 'greynoise_telemetry_cache';
-        const API_KEY_FILE = 'Greynoise API.txt';
-        const BOOTSTRAP_API_KEY = '';
-        const GREYNOISE_DIRECT_API = 'https://api.greynoise.io/v3/community';
-        const CORS_GATEWAY_PROXY = 'https://cors-anywhere.herokuapp.com/';
+        const GREYNOISE_PROXY_API = 'https://sycureai-71c13dfc.onrender.com/api/greynoise';
         const LIVE_REFRESH_MS = 45000;
 
         let telemetryStore = [];
-        let simulationInterval = null;
         let liveRefreshInterval = null;
-        let activeApiKey = '';
         let currentlyOpenIp = null;
         let isSyncing = false;
-
-        const MOCK_IP_PROFILES = {
-            '8.8.8.8': {
-                name: 'Google Public DNS',
-                classification: 'benign',
-                noise: false,
-                riot: true
-            },
-            '185.220.101.1': {
-                name: 'Tor Exit Node',
-                classification: 'malicious',
-                noise: true,
-                riot: false
-            }
-        };
-
-        const MOCK_ACTORS = [
-            { name: 'Shodan.io', classification: 'benign', noise: true, riot: false },
-            { name: 'Censys Scanner', classification: 'benign', noise: true, riot: false },
-            { name: 'Tor Exit Node', classification: 'malicious', noise: true, riot: false },
-            { name: 'Googlebot', classification: 'benign', noise: false, riot: true },
-            { name: 'Google Public DNS', classification: 'benign', noise: false, riot: true },
-            { name: 'Cloudflare CDN', classification: 'benign', noise: false, riot: true },
-            { name: 'Mass Scanner Infrastructure', classification: 'unknown', noise: true, riot: false },
-            { name: 'Masscan Botnet', classification: 'malicious', noise: true, riot: false },
-            { name: 'Unknown Scanner', classification: 'unknown', noise: true, riot: false },
-            { name: 'Mirai Variant', classification: 'malicious', noise: true, riot: false },
-            { name: 'Microsoft Azure', classification: 'benign', noise: false, riot: true },
-            { name: 'Zoom Video Communications', classification: 'benign', noise: false, riot: true },
-            { name: 'Reconnaissance Probe', classification: 'unknown', noise: true, riot: false }
-        ];
 
         const LIVE_SEED_IPS = [
             '66.240.205.34', '8.8.8.8', '1.1.1.1', '185.220.101.1',
             '54.36.149.1', '104.16.132.229', '203.0.113.42', '198.51.100.77'
         ];
-
-        function randomIPv4() {
-            return Array.from({ length: 4 }, () => Math.floor(Math.random() * 254) + 1).join('.');
-        }
-
-        function randomPastDate(daysBack = 90) {
-            const d = new Date();
-            d.setDate(d.getDate() - Math.floor(Math.random() * daysBack));
-            return d.toISOString().split('T')[0];
-        }
 
         function buildVisualizerLink(ip, riot) {
             return riot
@@ -459,10 +393,6 @@
             if (value === true || value === 'true' || value === 'True') return true;
             if (value === false || value === 'false' || value === 'False') return false;
             return Boolean(value);
-        }
-
-        function resolveMockProfile(ip) {
-            return MOCK_IP_PROFILES[ip] || null;
         }
 
         function normalizeGreyNoiseRecord(raw) {
@@ -489,85 +419,22 @@
                 name,
                 last_seen: raw.last_seen || new Date().toISOString().split('T')[0],
                 link: raw.link || buildVisualizerLink(ip, riot),
-                message: raw.message || 'Success',
-                source: 'live'
+                message: raw.message || 'Success'
             };
-        }
-
-        function generateMockGreyNoiseEvent(overrideIp) {
-            const ip = overrideIp || randomIPv4();
-            const profile = resolveMockProfile(ip)
-                || MOCK_ACTORS[Math.floor(Math.random() * MOCK_ACTORS.length)];
-
-            return normalizeGreyNoiseRecord({
-                ip,
-                noise: profile.noise,
-                riot: profile.riot,
-                classification: profile.classification,
-                name: profile.name,
-                last_seen: randomPastDate(),
-                link: buildVisualizerLink(ip, profile.riot),
-                source: 'mock'
-            });
         }
 
         function delay(ms) {
             return new Promise(resolve => setTimeout(resolve, ms));
         }
 
-        async function loadApiKeyFromFile() {
-            try {
-                const response = await fetch(API_KEY_FILE, { cache: 'no-store' });
-                if (response.ok) {
-                    const text = (await response.text()).trim();
-                    if (text) return text;
-                }
-            } catch (_) {
-                /* file:// or missing file — fall through to bootstrap key */
-            }
-            return BOOTSTRAP_API_KEY;
-        }
-
-        function isLocalDeploymentContext() {
-            return window.location.hostname === 'localhost'
-                || window.location.hostname === '127.0.0.1'
-                || window.location.protocol === 'file:';
-        }
-
-        function buildGreyNoiseEndpoint(ip) {
-            const targetUrl = `${GREYNOISE_DIRECT_API}/${ip}`;
-            return isLocalDeploymentContext()
-                ? `${CORS_GATEWAY_PROXY}${targetUrl}`
-                : targetUrl;
-        }
-
         function renderThreatIntelPanel(telemetryPayload) {
             const record = (telemetryPayload && telemetryPayload.ip && telemetryPayload.classification !== undefined)
-                ? (telemetryPayload.source ? telemetryPayload : normalizeGreyNoiseRecord(telemetryPayload))
+                ? normalizeGreyNoiseRecord(telemetryPayload)
                 : null;
 
             if (record && currentlyOpenIp === record.ip) {
                 populateIntelPanel(record);
             }
-        }
-
-        function updateUiWithMockData(ip) {
-            const fallbackContext = generateMockGreyNoiseEvent(ip);
-            fallbackContext.source = 'mock';
-            renderThreatIntelPanel(fallbackContext);
-            return fallbackContext;
-        }
-
-        async function initializeApiKey() {
-            const fileKey = await loadApiKeyFromFile();
-            const input = document.getElementById('apiKeyInput');
-            activeApiKey = fileKey || localStorage.getItem(STORAGE_KEY) || '';
-            input.value = activeApiKey;
-            if (activeApiKey) {
-                localStorage.setItem(STORAGE_KEY, activeApiKey);
-            }
-            updateConnectionStatus();
-            toggleLiveControls();
         }
 
         async function fetchGreyNoiseData(ip) {
@@ -577,72 +444,30 @@
                 throw new Error('Invalid IPv4 address format.');
             }
 
-            const apiKey = document.getElementById('apiKeyInput')?.value?.trim()
-                || localStorage.getItem(STORAGE_KEY)
-                || activeApiKey
-                || '';
+            const response = await fetch(`${GREYNOISE_PROXY_API}/${sanitizedIp}`, {
+                method: 'GET',
+                headers: { 'Accept': 'application/json' }
+            });
 
-            const targetUrl = `${GREYNOISE_DIRECT_API}/${sanitizedIp}`;
-            const isLocal = isLocalDeploymentContext();
-            const finalizedApiEndpoint = isLocal
-                ? `${CORS_GATEWAY_PROXY}${targetUrl}`
-                : targetUrl;
+            const telemetryPayload = await response.json().catch(() => null);
 
-            if (!apiKey) {
-                console.warn('No API Key detected. Engaging local fallback telemetry generator engine.');
-                return updateUiWithMockData(sanitizedIp);
+            if (!response.ok) {
+                throw new Error(
+                    telemetryPayload?.message || `GreyNoise proxy error. Status: ${response.status}`
+                );
             }
 
-            activeApiKey = apiKey;
-
-            try {
-                const response = await fetch(finalizedApiEndpoint, {
-                    method: 'GET',
-                    headers: {
-                        'Accept': 'application/json',
-                        'key': apiKey
-                    }
-                });
-
-                const telemetryPayload = await response.json().catch(() => null);
-
-                if (telemetryPayload && telemetryPayload.ip) {
-                    const record = normalizeGreyNoiseRecord(telemetryPayload);
-                    renderThreatIntelPanel(record);
-                    return record;
-                }
-
-                if (!response.ok) {
-                    throw new Error(`GreyNoise API communication fault. Status: ${response.status}`);
-                }
-
-                throw new Error(telemetryPayload?.message || 'No IP data returned from GreyNoise.');
-
-            } catch (error) {
-                console.error('CORS Pipeline Exception Handled:', error);
-                return updateUiWithMockData(sanitizedIp);
+            if (telemetryPayload && telemetryPayload.ip) {
+                const record = normalizeGreyNoiseRecord(telemetryPayload);
+                renderThreatIntelPanel(record);
+                return record;
             }
-        }
 
-        function getApiKeyActive() {
-            return activeApiKey.trim().length > 0
-                || Boolean(document.getElementById('apiKeyInput')?.value?.trim())
-                || Boolean(localStorage.getItem(STORAGE_KEY));
-        }
-
-        function toggleLiveControls() {
-            const live = getApiKeyActive();
-            document.getElementById('btnRefreshAll').classList.toggle('hidden', !live);
-            document.getElementById('btnSimulate').classList.toggle('hidden', live);
-            document.getElementById('lastSyncLabel').classList.toggle('hidden', !live);
+            throw new Error(telemetryPayload?.message || 'No IP data returned from GreyNoise.');
         }
 
         function setSyncStatus(state, detail) {
             const label = document.getElementById('lastSyncLabel');
-            if (!getApiKeyActive()) {
-                label.classList.add('hidden');
-                return;
-            }
             label.classList.remove('hidden');
             if (state === 'syncing') {
                 label.textContent = 'Syncing live telemetry...';
@@ -654,37 +479,6 @@
             } else if (state === 'error') {
                 label.textContent = detail || 'Sync failed';
                 label.className = 'text-[10px] text-red-600 font-mono mt-0.5';
-            }
-        }
-
-        function updateConnectionStatus() {
-            const dot = document.getElementById('connectionStatus');
-            const label = document.getElementById('connectionLabel');
-            if (getApiKeyActive()) {
-                dot.className = 'status-dot bg-emerald-500 animate-pulse';
-                label.textContent = 'LIVE API';
-            } else {
-                dot.className = 'status-dot bg-amber-500 animate-pulse';
-                label.textContent = 'SIMULATION MODE';
-            }
-        }
-
-        function saveApiKey(key) {
-            activeApiKey = key;
-            if (key) {
-                localStorage.setItem(STORAGE_KEY, key);
-            } else {
-                localStorage.removeItem(STORAGE_KEY);
-            }
-            updateConnectionStatus();
-            toggleLiveControls();
-            if (getApiKeyActive()) {
-                stopSimulationEngine();
-                startLiveRefreshEngine();
-                refreshAllTelemetry();
-            } else {
-                stopLiveRefreshEngine();
-                startSimulationEngine();
             }
         }
 
@@ -700,10 +494,7 @@
                 if (cached) {
                     const parsed = JSON.parse(cached);
                     if (Array.isArray(parsed)) {
-                        telemetryStore = parsed.map(item => ({
-                            ...normalizeGreyNoiseRecord(item),
-                            source: item.source || 'live'
-                        }));
+                        telemetryStore = parsed.map(item => normalizeGreyNoiseRecord(item));
                     }
                 }
             } catch (_) {
@@ -775,7 +566,7 @@
                     <tr id="emptyStateRow">
                         <td colspan="7" class="text-center text-slate-400 py-12 text-sm">
                             ${telemetryStore.length === 0
-                                ? 'No telemetry logged. Enter an IP to lookup or click "Simulate Event" to seed mock data.'
+                                ? 'No telemetry logged. Enter an IP to lookup or wait for live data to load.'
                                 : 'No records match the current filters.'}
                         </td>
                     </tr>`;
@@ -946,25 +737,6 @@
             }
         }
 
-        function seedInitialData() {
-            if (telemetryStore.length > 0) return;
-
-            LIVE_SEED_IPS.forEach((ip, i) => {
-                const profile = resolveMockProfile(ip) || MOCK_ACTORS[i % MOCK_ACTORS.length];
-                upsertRecord(normalizeGreyNoiseRecord({
-                    ip,
-                    noise: profile.noise,
-                    riot: profile.riot,
-                    classification: profile.classification,
-                    name: profile.name,
-                    last_seen: randomPastDate(),
-                    link: buildVisualizerLink(ip, profile.riot),
-                    source: 'mock'
-                }));
-            });
-            updateTableDisplay();
-        }
-
         async function ingestLiveIps(ips, options = {}) {
             const { replaceStore = false } = options;
             if (replaceStore) {
@@ -985,7 +757,7 @@
         }
 
         async function refreshAllTelemetry() {
-            if (!getApiKeyActive() || isSyncing) return;
+            if (isSyncing) return;
 
             isSyncing = true;
             setSyncStatus('syncing');
@@ -1002,36 +774,14 @@
             }
         }
 
-        function storeNeedsLiveBootstrap() {
-            if (telemetryStore.length === 0) return true;
-            return telemetryStore.every(r => r.source !== 'live');
-        }
-
         async function bootstrapLiveTelemetry() {
             setSyncStatus('syncing');
-            if (storeNeedsLiveBootstrap()) {
-                await ingestLiveIps(LIVE_SEED_IPS, { replaceStore: true });
+            if (telemetryStore.length === 0) {
+                await ingestLiveIps(LIVE_SEED_IPS);
             } else {
                 await refreshAllTelemetry();
             }
             setSyncStatus('synced');
-        }
-
-        function stopSimulationEngine() {
-            if (simulationInterval) {
-                clearInterval(simulationInterval);
-                simulationInterval = null;
-            }
-        }
-
-        function startSimulationEngine() {
-            stopSimulationEngine();
-            simulationInterval = setInterval(() => {
-                if (getApiKeyActive()) return;
-                const event = generateMockGreyNoiseEvent();
-                upsertRecord(event);
-                updateTableDisplay();
-            }, 12000);
         }
 
         function stopLiveRefreshEngine() {
@@ -1043,8 +793,6 @@
 
         function startLiveRefreshEngine() {
             stopLiveRefreshEngine();
-            if (!getApiKeyActive()) return;
-
             liveRefreshInterval = setInterval(() => {
                 refreshAllTelemetry();
             }, LIVE_REFRESH_MS);
@@ -1063,22 +811,10 @@
         }
 
         function initEventListeners() {
-            const apiKeyInput = document.getElementById('apiKeyInput');
-
-            apiKeyInput.addEventListener('input', (e) => {
-                saveApiKey(e.target.value.trim());
-            });
-
             document.getElementById('btnRefreshAll').addEventListener('click', () => refreshAllTelemetry());
             document.getElementById('btnLookup').addEventListener('click', () => performLookup());
             document.getElementById('ipLookupInput').addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') performLookup();
-            });
-
-            document.getElementById('btnSimulate').addEventListener('click', () => {
-                const event = generateMockGreyNoiseEvent();
-                upsertRecord(event);
-                updateTableDisplay();
             });
 
             document.getElementById('btnClear').addEventListener('click', () => {
@@ -1103,17 +839,8 @@
             loadTelemetry();
             initClock();
             initEventListeners();
-            await initializeApiKey();
-
-            if (getApiKeyActive()) {
-                stopSimulationEngine();
-                await bootstrapLiveTelemetry();
-                startLiveRefreshEngine();
-            } else {
-                seedInitialData();
-                startSimulationEngine();
-            }
-
+            await bootstrapLiveTelemetry();
+            startLiveRefreshEngine();
             updateTableDisplay();
         }
 
