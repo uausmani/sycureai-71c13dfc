@@ -372,6 +372,8 @@
         const TELEMETRY_KEY = 'greynoise_telemetry_cache';
         const GREYNOISE_PROXY_API = 'https://sycureai-71c13dfc.onrender.com/api/greynoise';
         const LIVE_REFRESH_MS = 45000;
+        const LOOKUP_THROTTLE_MS = 1000;
+        const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
         let telemetryStore = [];
         let liveRefreshInterval = null;
@@ -421,10 +423,6 @@
                 link: raw.link || buildVisualizerLink(ip, riot),
                 message: raw.message || 'Success'
             };
-        }
-
-        function delay(ms) {
-            return new Promise(resolve => setTimeout(resolve, ms));
         }
 
         function renderThreatIntelPanel(telemetryPayload) {
@@ -744,12 +742,16 @@
             }
 
             const uniqueIps = [...new Set(ips.map(ip => ip.trim()).filter(Boolean))];
-            for (const ip of uniqueIps) {
+
+            for (const [index, ip] of uniqueIps.entries()) {
+                if (index > 0) {
+                    await delay(LOOKUP_THROTTLE_MS);
+                }
+
                 try {
                     const record = await fetchGreyNoiseData(ip);
                     upsertRecord(record);
                     updateTableDisplay();
-                    await delay(300);
                 } catch (err) {
                     console.warn(`GreyNoise lookup failed for ${ip}:`, err.message);
                 }
