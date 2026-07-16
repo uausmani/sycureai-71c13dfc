@@ -82,16 +82,7 @@ const Index = () => {
       <div className="mx-auto px-4 md:px-8 pt-3 md:pt-4 pb-8 max-w-6xl">
         <header className="mb-4 md:mb-6 -ml-2 md:-ml-3">
           <Logo onClick={handleLogoClick} />
-          <div className="mt-1 md:mt-2 ml-2 md:ml-3">
-            <h1 className="text-xl md:text-2xl font-light tracking-tight text-foreground">
-              Intelligence Hub
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground font-light tracking-wide max-w-2xl">
-              Tracked signals across AI &amp; Robotics, cybersecurity, bitcoin, quantum, and funding.
-            </p>
-          </div>
         </header>
-
 
         <div className="flex flex-col lg:flex-row gap-12 lg:gap-16">
           <nav className="lg:w-56 flex-shrink-0" aria-label="Topic navigation">
@@ -106,6 +97,15 @@ const Index = () => {
               <ContactForm />
             ) : (
               <>
+                <div className="text-center mb-2">
+                  <h1 className="text-xl md:text-2xl font-light tracking-tight text-foreground">
+                    Intelligence Hub
+                  </h1>
+                  <p className="mt-1 text-sm text-muted-foreground font-light tracking-wide">
+                    Tracked signals across AI &amp; Robotics, cybersecurity, bitcoin, quantum, and funding.
+                  </p>
+                </div>
+
                 {displayTopics.map((topic, index) => (
                   <IntelligenceAccordion
                     key={topic.section}
