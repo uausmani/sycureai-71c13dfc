@@ -102,7 +102,7 @@ const Index = () => {
                     Intelligence Hub
                   </h1>
                   <p className="mt-1 text-sm text-muted-foreground font-light tracking-wide">
-                    Tracked signals across AI &amp; Robotics, cybersecurity, bitcoin, quantum, and funding.
+                    Tracked signals across AI &amp; Robotics, Cybersecurity, Bitcoin, Quantum, and Funding.
                   </p>
                 </div>
 
