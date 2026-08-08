@@ -48,9 +48,9 @@ export function TopicAccordion({
       <Accordion type="single" collapsible className="w-full">
         <AccordionItem
           value={title}
-          className="border-2 border-border rounded-2xl bg-card overflow-hidden hover:border-primary/40 transition-all duration-300"
+          className="border-0 border-b border-border bg-transparent rounded-none"
         >
-          <AccordionTrigger className="px-8 py-6 hover:no-underline group">
+          <AccordionTrigger className="px-2 py-4 rounded-md hover:no-underline hover:bg-foreground/[0.02] transition-colors group">
             <div className="flex items-center gap-3 w-full">
               <div className="flex flex-col items-start text-left flex-1">
                 <h3 className="text-xl font-medium tracking-wide text-foreground group-hover:text-primary transition-colors duration-300">
@@ -77,7 +77,7 @@ export function TopicAccordion({
               )}
             </div>
           </AccordionTrigger>
-          <AccordionContent className="px-8 pb-6">
+          <AccordionContent className="px-2 pb-6">
             {isLoading ? (
               <div className="space-y-4">
                 <p className="text-xs text-muted-foreground tracking-wide uppercase animate-pulse">
