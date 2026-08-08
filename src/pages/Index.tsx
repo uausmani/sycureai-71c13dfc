@@ -79,10 +79,14 @@ const Index = () => {
 
   return (
     <main className="min-h-screen bg-background">
-      <div className="mx-auto px-4 md:px-8 pt-3 md:pt-4 pb-8 max-w-6xl">
-        <header className="mb-4 md:mb-6 -ml-2 md:-ml-3">
+      <header className="w-full border-b border-border">
+        <div className="flex items-center w-full max-w-7xl mx-auto px-4 py-6">
           <Logo onClick={handleLogoClick} />
-        </header>
+        </div>
+      </header>
+
+      <div className="mx-auto px-4 md:px-8 pt-8 md:pt-10 pb-8 max-w-6xl">
+
 
         <div className="flex flex-col lg:flex-row gap-12 lg:gap-16">
           <nav className="lg:w-56 flex-shrink-0" aria-label="Topic navigation">
