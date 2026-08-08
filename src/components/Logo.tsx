@@ -15,8 +15,8 @@ export function Logo({ onClick }: LogoProps) {
           alt="Sycure.ai - AI, Cybersecurity, Bitcoin & Quantum Insights"
           className="h-16 md:h-20 w-auto"
 
-          width={1000}
-          height={277}
+          width={890}
+          height={179}
           fetchPriority="high"
         />
       </button>
