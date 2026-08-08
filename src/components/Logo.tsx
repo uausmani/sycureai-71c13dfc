@@ -15,8 +15,8 @@ export function Logo({ onClick }: LogoProps) {
         aria-hidden="true"
         className="w-8 h-8 bg-primary select-none"
         style={{
-          WebkitMaskImage: `url(${sycureMark.url})`,
-          maskImage: `url(${sycureMark.url})`,
+          WebkitMaskImage: `url(${sycureMark})`,
+          maskImage: `url(${sycureMark})`,
           WebkitMaskRepeat: "no-repeat",
           maskRepeat: "no-repeat",
           WebkitMaskPosition: "center",
