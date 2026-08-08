@@ -1,25 +1,34 @@
+import sycureMark from "@/assets/sycure-mark.png";
+
 interface LogoProps {
   onClick?: () => void;
 }
 
 export function Logo({ onClick }: LogoProps) {
   return (
-    <div className="flex items-center opacity-0 animate-fade-in">
-      <button 
-        onClick={onClick}
-        className="focus:outline-none transition-transform duration-200 hover:scale-105"
-        aria-label="Go to home"
-      >
-        <img 
-          src="/sycure-logo.webp"
-          alt="Sycure.ai - AI, Cybersecurity, Bitcoin & Quantum Insights"
-          className="h-8 md:h-10 w-auto"
-
-          width={890}
-          height={179}
-          fetchPriority="high"
-        />
-      </button>
-    </div>
+    <button
+      onClick={onClick}
+      className="flex items-center gap-2.5 focus:outline-none"
+      aria-label="Sycure home"
+    >
+      <span
+        aria-hidden="true"
+        className="w-8 h-8 bg-primary select-none"
+        style={{
+          WebkitMaskImage: `url(${sycureMark})`,
+          maskImage: `url(${sycureMark})`,
+          WebkitMaskRepeat: "no-repeat",
+          maskRepeat: "no-repeat",
+          WebkitMaskPosition: "center",
+          maskPosition: "center",
+          WebkitMaskSize: "contain",
+          maskSize: "contain",
+        }}
+      />
+      <div className="flex items-baseline gap-0.5 leading-none">
+        <span className="text-lg font-semibold tracking-tight text-foreground">Sycure</span>
+        <span className="text-lg font-light tracking-tight text-primary">.ai</span>
+      </div>
+    </button>
   );
 }
