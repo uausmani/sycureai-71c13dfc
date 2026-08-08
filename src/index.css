@@ -7,8 +7,9 @@
 @layer base {
   :root {
     /* Sycure.ai Brand Colors - Clean, Minimal */
-    --background: 0 0% 100%;
-    --foreground: 215 35% 15%;
+    --background: 60 60% 98%;
+    --foreground: 220 20% 10%;
+
 
     --card: 0 0% 100%;
     --card-foreground: 215 35% 15%;
@@ -33,7 +34,7 @@
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 210 20% 90%;
+    --border: 40 12% 90%;
     --input: 210 20% 90%;
     --ring: 205 100% 50%;
 
@@ -51,7 +52,7 @@
     --shadow-glow: 0 0 40px hsl(205 100% 50% / 0.15);
 
     /* Sidebar */
-    --sidebar-background: 0 0% 100%;
+    --sidebar-background: 60 60% 98%;
     --sidebar-foreground: 215 35% 15%;
     --sidebar-primary: 205 100% 50%;
     --sidebar-primary-foreground: 0 0% 100%;
