@@ -1,4 +1,4 @@
-import sycureMark from "@/assets/sycure-mark.png.asset.json";
+import sycureMark from "@/assets/sycure-mark.png";
 
 interface LogoProps {
   onClick?: () => void;
