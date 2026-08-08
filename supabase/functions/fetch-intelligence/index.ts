@@ -161,12 +161,18 @@ serve(async (req) => {
   }
 
   try {
-    const { category } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const category = typeof body?.category === 'string' ? body.category.trim().toLowerCase() : '';
     const query = CATEGORY_QUERIES[category];
 
     if (!query) {
-      return new Response(JSON.stringify({ success: false, error: 'Invalid category' }), {
-        status: 400,
+      // Unknown/missing category: respond gracefully so the UI never breaks.
+      console.warn('fetch-intelligence: unknown category', category);
+      return new Response(JSON.stringify({
+        success: true,
+        articles: [],
+        fetchedAt: new Date().toISOString(),
+      }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
