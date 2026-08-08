@@ -1,5 +1,3 @@
-import logoAsset from "@/assets/sycure-logo.png.asset.json";
-
 interface LogoProps {
   onClick?: () => void;
 }
@@ -13,9 +11,10 @@ export function Logo({ onClick }: LogoProps) {
         aria-label="Go to home"
       >
         <img 
-          src={logoAsset.url}
+          src="/sycure-logo.webp"
           alt="Sycure.ai - AI, Cybersecurity, Bitcoin & Quantum Insights"
           className="h-16 md:h-20 w-auto"
+
           width={1000}
           height={277}
           fetchPriority="high"
