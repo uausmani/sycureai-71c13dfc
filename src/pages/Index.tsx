@@ -97,14 +97,18 @@ const Index = () => {
               <ContactForm />
             ) : (
               <>
-                <div className="text-center mb-2">
-                  <h1 className="text-xl md:text-2xl font-light tracking-tight text-foreground">
+                <div className="mb-4">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.25em] text-muted-foreground">
+                    Research Workspace
+                  </p>
+                  <h1 className="mt-2 text-3xl md:text-4xl font-bold tracking-tight text-foreground">
                     Intelligence Hub
                   </h1>
-                  <p className="mt-1 text-sm text-muted-foreground font-light tracking-wide">
+                  <p className="mt-2 text-sm md:text-base text-muted-foreground font-light tracking-wide">
                     Tracked signals across AI &amp; Robotics, Cybersecurity, Bitcoin, Quantum, and Funding.
                   </p>
                 </div>
+
 
                 {displayTopics.map((topic, index) => (
                   <IntelligenceAccordion
