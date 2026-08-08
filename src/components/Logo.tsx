@@ -11,11 +11,12 @@ export function Logo({ onClick }: LogoProps) {
         aria-label="Go to home"
       >
         <img 
-          src="/sycure-logo.webp" 
+          src="/sycure-logo.webp"
           alt="Sycure.ai - AI, Cybersecurity, Bitcoin & Quantum Insights"
-          className="h-24 md:h-32 w-auto"
-          width={224}
-          height={128}
+          className="h-16 md:h-20 w-auto"
+
+          width={890}
+          height={179}
           fetchPriority="high"
         />
       </button>
